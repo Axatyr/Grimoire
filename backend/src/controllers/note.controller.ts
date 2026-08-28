@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db/prisma.js';
 import { AuthRequest } from '../types/index.js';
 import { getParam, getQueryParam } from '../utils/params.js';
+import { sanitizeList } from '../utils/sanitize.js';
 
 export const noteSchema = z.object({
   campaignId: z.string().uuid(),
@@ -10,6 +11,12 @@ export const noteSchema = z.object({
   content: z.string(),
   isPublic: z.boolean().default(false),
   sessionDate: z.string().optional().nullable(),
+  customProperties: z.array(z.object({
+    id: z.string().optional(),
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean().default(false)
+  })).optional(),
 });
 
 export const getNotes = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -35,7 +42,7 @@ export const getNotes = async (req: AuthRequest, res: Response, next: NextFuncti
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json({ notes });
+    res.json({ notes: sanitizeList(notes, isMaster) });
   } catch (error) {
     next(error);
   }

@@ -4,6 +4,7 @@ import { prisma } from '../db/prisma.js';
 import { AuthRequest } from '../types/index.js';
 import { Visibility } from '@prisma/client';
 import { getParam, getQueryParam } from '../utils/params.js';
+import { sanitizeEntity, sanitizeList } from '../utils/sanitize.js';
 
 export const characterSchema = z.object({
   campaignId: z.string().uuid(),
@@ -16,6 +17,12 @@ export const characterSchema = z.object({
   hpCurrent: z.number().int().default(10),
   ac: z.number().int().default(10),
   stats: z.record(z.any()).optional(),
+  customProperties: z.array(z.object({
+    id: z.string().optional(),
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean().default(false)
+  })).optional(),
   inventoryNotes: z.string().optional(),
   avatarUrl: z.string().optional().nullable(),
   isNpc: z.boolean().default(false),
@@ -25,6 +32,7 @@ export const characterSchema = z.object({
 export const getCharacters = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const campaignId = getQueryParam(req, 'campaignId');
+    const isMaster = req.user?.role === 'MASTER' || req.user?.role === 'ADMIN';
 
     const characters = await prisma.character.findMany({
       where: {
@@ -38,7 +46,7 @@ export const getCharacters = async (req: AuthRequest, res: Response, next: NextF
       orderBy: { name: 'asc' }
     });
 
-    res.json({ characters });
+    res.json({ characters: sanitizeList(characters, isMaster) });
   } catch (error) {
     next(error);
   }
@@ -47,6 +55,8 @@ export const getCharacters = async (req: AuthRequest, res: Response, next: NextF
 export const getCharacterById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const id = getParam(req, 'id');
+    const isMaster = req.user?.role === 'MASTER' || req.user?.role === 'ADMIN';
+
     const character = await prisma.character.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -61,7 +71,7 @@ export const getCharacterById = async (req: AuthRequest, res: Response, next: Ne
       return;
     }
 
-    res.json({ character });
+    res.json({ character: sanitizeEntity(character, isMaster) });
   } catch (error) {
     next(error);
   }

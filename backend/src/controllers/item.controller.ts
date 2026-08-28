@@ -4,6 +4,7 @@ import { prisma } from '../db/prisma.js';
 import { AuthRequest } from '../types/index.js';
 import { Visibility } from '@prisma/client';
 import { getParam, getQueryParam } from '../utils/params.js';
+import { sanitizeEntity, sanitizeList } from '../utils/sanitize.js';
 
 export const itemSchema = z.object({
   campaignId: z.string().uuid(),
@@ -14,6 +15,13 @@ export const itemSchema = z.object({
   value: z.string().optional(),
   weight: z.number().optional().nullable(),
   properties: z.record(z.any()).optional(),
+  customProperties: z.array(z.object({
+    id: z.string().optional(),
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean().default(false)
+  })).optional(),
+  lootGroup: z.string().optional().nullable(),
   assignedCharacterId: z.string().uuid().optional().nullable(),
   visibility: z.nativeEnum(Visibility).default(Visibility.PUBLIC_PLAYERS),
 });
@@ -22,24 +30,34 @@ export const transferItemSchema = z.object({
   targetCharacterId: z.string().uuid().optional().nullable(), // null means drop/unassign
 });
 
+export const batchRevealSchema = z.object({
+  campaignId: z.string().uuid(),
+  lootGroup: z.string().optional(),
+  itemIds: z.array(z.string().uuid()).optional(),
+});
+
 export const getItems = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const campaignId = getQueryParam(req, 'campaignId');
     const characterId = getQueryParam(req, 'characterId');
+    const lootGroup = getQueryParam(req, 'lootGroup');
+    const isMaster = req.user?.role === 'MASTER' || req.user?.role === 'ADMIN';
 
     const items = await prisma.item.findMany({
       where: {
         deletedAt: null,
         ...(campaignId ? { campaignId } : {}),
         ...(characterId ? { assignedCharacterId: characterId } : {}),
+        ...(lootGroup ? { lootGroup } : {}),
+        ...(!isMaster ? { visibility: Visibility.PUBLIC_PLAYERS } : {}),
       },
       include: {
         assignedCharacter: { select: { id: true, name: true, userId: true } }
       },
-      orderBy: { name: 'asc' }
+      orderBy: [{ lootGroup: 'asc' }, { name: 'asc' }]
     });
 
-    res.json({ items });
+    res.json({ items: sanitizeList(items, isMaster) });
   } catch (error) {
     next(error);
   }
@@ -48,6 +66,8 @@ export const getItems = async (req: AuthRequest, res: Response, next: NextFuncti
 export const getItemById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const id = getParam(req, 'id');
+    const isMaster = req.user?.role === 'MASTER' || req.user?.role === 'ADMIN';
+
     const item = await prisma.item.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -60,7 +80,12 @@ export const getItemById = async (req: AuthRequest, res: Response, next: NextFun
       return;
     }
 
-    res.json({ item });
+    if (!isMaster && item.visibility === Visibility.PRIVATE_MASTER) {
+      res.status(403).json({ error: 'Access denied' });
+      return;
+    }
+
+    res.json({ item: sanitizeEntity(item, isMaster) });
   } catch (error) {
     next(error);
   }
@@ -83,7 +108,10 @@ export const updateItem = async (req: AuthRequest, res: Response, next: NextFunc
 
     const updated = await prisma.item.update({
       where: { id },
-      data
+      data,
+      include: {
+        assignedCharacter: { select: { id: true, name: true, userId: true } }
+      }
     });
 
     res.json({ item: updated });
@@ -131,6 +159,28 @@ export const transferItem = async (req: AuthRequest, res: Response, next: NextFu
     });
 
     res.json({ item: updated, message: 'Item assigned/transferred successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const batchRevealLoot = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { campaignId, lootGroup, itemIds } = req.body;
+
+    await prisma.item.updateMany({
+      where: {
+        campaignId,
+        deletedAt: null,
+        ...(lootGroup ? { lootGroup } : {}),
+        ...(itemIds && itemIds.length > 0 ? { id: { in: itemIds } } : {}),
+      },
+      data: {
+        visibility: Visibility.PUBLIC_PLAYERS
+      }
+    });
+
+    res.json({ message: 'Loot revealed to party successfully' });
   } catch (error) {
     next(error);
   }

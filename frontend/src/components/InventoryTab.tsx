@@ -3,7 +3,22 @@ import { useCampaign } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
 import { getSocket } from '../services/socket';
-import { Briefcase, Plus, ArrowRightLeft, Trash2, X } from 'lucide-react';
+import {
+  Briefcase,
+  Plus,
+  ArrowRightLeft,
+  Trash2,
+  Edit2,
+  X,
+  Sparkles,
+  Lock,
+  Eye,
+  EyeOff,
+  Package,
+  Shield,
+  Layers
+} from 'lucide-react';
+import { CustomPropertiesEditor, CustomPropertiesView, type CustomProperty } from './CustomPropertiesEditor';
 
 interface Item {
   id: string;
@@ -13,7 +28,10 @@ interface Item {
   type?: string;
   value?: string;
   weight?: number;
+  lootGroup?: string | null;
   assignedCharacterId?: string | null;
+  visibility: 'PRIVATE_MASTER' | 'PUBLIC_PLAYERS';
+  customProperties?: CustomProperty[];
   assignedCharacter?: { id: string; name: string; userId?: string } | null;
 }
 
@@ -29,8 +47,13 @@ export const InventoryTab: React.FC = () => {
 
   const [items, setItems] = useState<Item[]>([]);
   const [characters, setCharacters] = useState<CharacterOption[]>([]);
-  const [filterCharId, setFilterCharId] = useState<string>('ALL');
+  
+  // Section view filter: 'PARTY_INV' | 'PARTY_LOOT' | 'DM_STASH'
+  const [activeSection, setActiveSection] = useState<'PARTY_INV' | 'PARTY_LOOT' | 'DM_STASH'>('PARTY_LOOT');
+  const [selectedCharacterFilter, setSelectedCharacterFilter] = useState<string>('ALL');
+
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
 
   // Transfer item modal
   const [transferModalItem, setTransferModalItem] = useState<Item | null>(null);
@@ -43,7 +66,10 @@ export const InventoryTab: React.FC = () => {
   const [itemType, setItemType] = useState('Arma');
   const [value, setValue] = useState('');
   const [weight, setWeight] = useState('');
+  const [lootGroup, setLootGroup] = useState('');
   const [initialAssignedId, setInitialAssignedId] = useState('');
+  const [visibility, setVisibility] = useState<'PUBLIC_PLAYERS' | 'PRIVATE_MASTER'>('PUBLIC_PLAYERS');
+  const [customProperties, setCustomProperties] = useState<CustomProperty[]>([]);
 
   const fetchItems = async () => {
     if (!activeCampaign) return;
@@ -85,43 +111,86 @@ export const InventoryTab: React.FC = () => {
     };
   }, [activeCampaign?.id]);
 
-  const handleCreateItem = async (e: React.FormEvent) => {
+  const resetForm = () => {
+    setName('');
+    setDescription('');
+    setRarity('Common');
+    setItemType('Arma');
+    setValue('');
+    setWeight('');
+    setLootGroup('');
+    setInitialAssignedId('');
+    setVisibility(activeSection === 'DM_STASH' ? 'PRIVATE_MASTER' : 'PUBLIC_PLAYERS');
+    setCustomProperties([]);
+    setEditingItem(null);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setShowAddModal(true);
+  };
+
+  const openEditModal = (item: Item) => {
+    setEditingItem(item);
+    setName(item.name);
+    setDescription(item.description || '');
+    setRarity(item.rarity || 'Common');
+    setItemType(item.type || 'Arma');
+    setValue(item.value || '');
+    setWeight(item.weight ? item.weight.toString() : '');
+    setLootGroup(item.lootGroup || '');
+    setInitialAssignedId(item.assignedCharacterId || '');
+    setVisibility(item.visibility || 'PUBLIC_PLAYERS');
+    setCustomProperties(Array.isArray(item.customProperties) ? item.customProperties : []);
+    setShowAddModal(false);
+  };
+
+  const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !activeCampaign) return;
+
+    const payload = {
+      campaignId: activeCampaign.id,
+      name,
+      description,
+      rarity,
+      type: itemType,
+      value,
+      weight: weight ? parseFloat(weight) : undefined,
+      lootGroup: lootGroup.trim() || null,
+      assignedCharacterId: initialAssignedId || null,
+      visibility,
+      customProperties
+    };
+
     try {
-      const res = await apiFetch('/items', {
-        method: 'POST',
-        body: JSON.stringify({
-          campaignId: activeCampaign.id,
-          name,
-          description,
-          rarity,
-          type: itemType,
-          value,
-          weight: weight ? parseFloat(weight) : undefined,
-          assignedCharacterId: initialAssignedId || null,
-        })
-      });
-      setItems(prev => [...prev, res.item]);
-      setShowAddModal(false);
-      setName('');
-      setDescription('');
-      setValue('');
-      setWeight('');
-      setInitialAssignedId('');
+      if (editingItem) {
+        const res = await apiFetch(`/items/${editingItem.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        setItems(prev => prev.map(i => i.id === editingItem.id ? res.item : i));
+        setEditingItem(null);
+      } else {
+        const res = await apiFetch('/items', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        setItems(prev => [...prev, res.item]);
+        setShowAddModal(false);
+      }
+      resetForm();
 
       // Emit realtime sync
       const socket = getSocket();
       if (socket) {
         socket.emit('loot_transferred', {
           campaignId: activeCampaign.id,
-          itemId: res.item.id,
-          targetCharacterId: initialAssignedId,
-          itemName: res.item.name
+          itemName: name
         });
       }
     } catch (err: any) {
-      alert(err.message || 'Errore creazione oggetto');
+      alert(err.message || 'Errore salvataggio oggetto');
     }
   };
 
@@ -135,8 +204,7 @@ export const InventoryTab: React.FC = () => {
         body: JSON.stringify({ targetCharacterId: targetCharId || null })
       });
       setItems(prev => prev.map(it => it.id === transferModalItem.id ? res.item : it));
-      
-      // Emit realtime event
+
       const socket = getSocket();
       if (socket && activeCampaign) {
         socket.emit('loot_transferred', {
@@ -153,6 +221,49 @@ export const InventoryTab: React.FC = () => {
     }
   };
 
+  const handleToggleVisibility = async (item: Item) => {
+    if (!isMaster) return;
+    const nextVis = item.visibility === 'PUBLIC_PLAYERS' ? 'PRIVATE_MASTER' : 'PUBLIC_PLAYERS';
+    try {
+      const res = await apiFetch(`/items/${item.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ visibility: nextVis })
+      });
+      setItems(prev => prev.map(i => i.id === item.id ? res.item : i));
+
+      const socket = getSocket();
+      if (socket && activeCampaign) {
+        socket.emit('loot_transferred', { campaignId: activeCampaign.id, itemId: item.id });
+      }
+    } catch (err: any) {
+      alert(err.message || 'Errore modifica visibilità');
+    }
+  };
+
+  // Batch reveal an entire loot group to players
+  const handleRevealLootGroup = async (groupName: string) => {
+    if (!activeCampaign) return;
+    if (!confirm(`Rivelare tutto il bottino del gruppo "${groupName}" a tutti i giocatori?`)) return;
+
+    try {
+      await apiFetch('/items/batch-reveal', {
+        method: 'POST',
+        body: JSON.stringify({
+          campaignId: activeCampaign.id,
+          lootGroup: groupName
+        })
+      });
+      await fetchItems();
+
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('loot_transferred', { campaignId: activeCampaign.id, groupName });
+      }
+    } catch (err: any) {
+      alert(err.message || 'Errore reveal loot');
+    }
+  };
+
   const handleDeleteItem = async (itemId: string) => {
     if (!confirm('Rimuovere questo oggetto dal database?')) return;
     try {
@@ -163,119 +274,236 @@ export const InventoryTab: React.FC = () => {
     }
   };
 
-  const filteredItems = items.filter(item => {
-    if (filterCharId === 'ALL') return true;
-    if (filterCharId === 'UNASSIGNED') return !item.assignedCharacterId;
-    return item.assignedCharacterId === filterCharId;
-  });
 
-  const getRarityBadge = (r?: string) => {
-    const lower = (r || 'common').toLowerCase().replace(' ', '-');
-    return <span className={`badge badge-rarity-${lower}`}>{r || 'Comune'}</span>;
-  };
 
   if (!activeCampaign) return null;
 
+  // Split items into categories
+  const dmStashItems = items.filter(i => i.visibility === 'PRIVATE_MASTER');
+  const partyLootItems = items.filter(i => i.visibility === 'PUBLIC_PLAYERS' && !i.assignedCharacterId);
+  const partyInventoryItems = items.filter(i => i.assignedCharacterId);
+
+  // Group DM Stash by lootGroup
+  const dmStashGroups: Record<string, Item[]> = {};
+  dmStashItems.forEach(item => {
+    const grp = item.lootGroup?.trim() || 'Bottino Senza Nome';
+    if (!dmStashGroups[grp]) dmStashGroups[grp] = [];
+    dmStashGroups[grp].push(item);
+  });
+
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Briefcase color="var(--accent-gold)" /> Inventario & Distribuzione Loot
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>
-            Assegna tesori ai personaggi in tempo reale, scambia oggetti nel party o consulta il bottino.
+            Gestione bottini del party, forziere segreto del Master e distribuzione in tempo reale.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
-            className="grimoire-select"
-            style={{ width: 'auto', minWidth: '180px' }}
-            value={filterCharId}
-            onChange={e => setFilterCharId(e.target.value)}
-          >
-            <option value="ALL">📦 Tutti gli oggetti ({items.length})</option>
-            <option value="UNASSIGNED">💎 Loot non assegnato ({items.filter(i => !i.assignedCharacterId).length})</option>
-            {characters.map(c => (
-              <option key={c.id} value={c.id}>
-                👤 {c.name} ({items.filter(i => i.assignedCharacterId === c.id).length})
-              </option>
-            ))}
-          </select>
-
-          <button onClick={() => setShowAddModal(true)} className="grimoire-btn grimoire-btn-primary">
-            <Plus size={16} /> Aggiungi Oggetto / Loot
-          </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {isMaster && (
+            <button onClick={openCreateModal} className="grimoire-btn grimoire-btn-primary">
+              <Plus size={16} /> Aggiungi Oggetto / Loot
+            </button>
+          )}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-        {filteredItems.map(item => (
-          <div key={item.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', color: '#fff' }}>{item.name}</h3>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.type || 'Oggetto'}</span>
-                </div>
-                {getRarityBadge(item.rarity)}
-              </div>
+      {/* 3 Sections Tabs Bar */}
+      <div style={{
+        display: 'flex',
+        gap: '10px',
+        borderBottom: '1px solid var(--border-subtle)',
+        paddingBottom: '12px',
+        marginBottom: '24px'
+      }}>
+        <button
+          onClick={() => setActiveSection('PARTY_LOOT')}
+          className="grimoire-btn"
+          style={{
+            background: activeSection === 'PARTY_LOOT' ? 'rgba(234, 179, 8, 0.2)' : 'rgba(255,255,255,0.03)',
+            border: activeSection === 'PARTY_LOOT' ? '1px solid var(--accent-gold)' : '1px solid var(--border-subtle)',
+            color: activeSection === 'PARTY_LOOT' ? 'var(--accent-gold)' : 'var(--text-muted)',
+            fontWeight: activeSection === 'PARTY_LOOT' ? 600 : 400,
+            fontSize: '0.9rem',
+            padding: '8px 16px'
+          }}
+        >
+          <Package size={16} /> Bottino Rivelato ({partyLootItems.length})
+        </button>
 
-              {item.description && (
-                <p style={{ color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: '1.4', margin: '10px 0 14px 0' }}>
-                  {item.description}
-                </p>
-              )}
+        <button
+          onClick={() => setActiveSection('PARTY_INV')}
+          className="grimoire-btn"
+          style={{
+            background: activeSection === 'PARTY_INV' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.03)',
+            border: activeSection === 'PARTY_INV' ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
+            color: activeSection === 'PARTY_INV' ? '#c4b5fd' : 'var(--text-muted)',
+            fontWeight: activeSection === 'PARTY_INV' ? 600 : 400,
+            fontSize: '0.9rem',
+            padding: '8px 16px'
+          }}
+        >
+          <Shield size={16} /> Inventario Eroi ({partyInventoryItems.length})
+        </button>
 
-              <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '14px' }}>
-                {item.value && <span>Valore: <strong style={{ color: '#fde68a' }}>{item.value}</strong></span>}
-                {item.weight && <span>Peso: <strong style={{ color: '#cbd5e1' }}>{item.weight} kg</strong></span>}
-              </div>
+        {isMaster && (
+          <button
+            onClick={() => setActiveSection('DM_STASH')}
+            className="grimoire-btn"
+            style={{
+              background: activeSection === 'DM_STASH' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.03)',
+              border: activeSection === 'DM_STASH' ? '1px solid var(--accent-crimson)' : '1px solid var(--border-subtle)',
+              color: activeSection === 'DM_STASH' ? '#fca5a5' : 'var(--text-muted)',
+              fontWeight: activeSection === 'DM_STASH' ? 600 : 400,
+              fontSize: '0.9rem',
+              padding: '8px 16px'
+            }}
+          >
+            <Lock size={16} /> 🔒 Forziere del DM ({dmStashItems.length})
+          </button>
+        )}
+      </div>
+
+      {/* SECTION 1: PARTY LOOT (Bottino Libero) */}
+      {activeSection === 'PARTY_LOOT' && (
+        <div>
+          {partyLootItems.length === 0 ? (
+            <div className="glass-panel" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <Package size={40} style={{ opacity: 0.4, marginBottom: '10px' }} />
+              <p style={{ fontSize: '1.1rem' }}>Nessun bottino libero nel forziere comune.</p>
+              <p style={{ fontSize: '0.85rem' }}>Gli oggetti non assegnati e visibili ai giocatori appariranno qui.</p>
             </div>
-
-            <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Posseduto da:</span>
-                {item.assignedCharacter ? (
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-gold)' }}>
-                    👤 {item.assignedCharacter.name}
-                  </span>
-                ) : (
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
-                    Bottino libero nel forziere
-                  </span>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => {
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+              {partyLootItems.map(item => (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  isMaster={isMaster}
+                  onTransfer={() => {
                     setTransferModalItem(item);
                     setTargetCharId(item.assignedCharacterId || '');
                   }}
-                  className="grimoire-btn grimoire-btn-secondary"
-                  style={{ flex: 1, padding: '7px 10px', fontSize: '0.8rem' }}
-                >
-                  <ArrowRightLeft size={14} /> Assegna / Passa
-                </button>
-
-                {isMaster && (
-                  <button
-                    onClick={() => handleDeleteItem(item.id)}
-                    className="grimoire-btn grimoire-btn-danger"
-                    style={{ padding: '7px 10px' }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
+                  onEdit={() => openEditModal(item)}
+                  onDelete={() => handleDeleteItem(item.id)}
+                  onToggleVisibility={() => handleToggleVisibility(item)}
+                />
+              ))}
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+        </div>
+      )}
 
-      {showAddModal && (
+      {/* SECTION 2: PARTY INVENTORY */}
+      {activeSection === 'PARTY_INV' && (
+        <div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '18px' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Filtra per Eroe:</span>
+            <select
+              className="grimoire-select"
+              style={{ width: 'auto', minWidth: '200px' }}
+              value={selectedCharacterFilter}
+              onChange={e => setSelectedCharacterFilter(e.target.value)}
+            >
+              <option value="ALL">Tutti gli eroi ({partyInventoryItems.length} oggetti)</option>
+              {characters.map(c => (
+                <option key={c.id} value={c.id}>
+                  👤 {c.name} ({partyInventoryItems.filter(i => i.assignedCharacterId === c.id).length})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+            {partyInventoryItems
+              .filter(i => selectedCharacterFilter === 'ALL' || i.assignedCharacterId === selectedCharacterFilter)
+              .map(item => (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  isMaster={isMaster}
+                  onTransfer={() => {
+                    setTransferModalItem(item);
+                    setTargetCharId(item.assignedCharacterId || '');
+                  }}
+                  onEdit={() => openEditModal(item)}
+                  onDelete={() => handleDeleteItem(item.id)}
+                  onToggleVisibility={() => handleToggleVisibility(item)}
+                />
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 3: DM STASH (Forziere Segreto del Master con Gruppi Loot) */}
+      {activeSection === 'DM_STASH' && isMaster && (
+        <div>
+          <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', padding: '16px', borderRadius: 'var(--radius-sm)', marginBottom: '24px' }}>
+            <h4 style={{ color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <Lock size={16} /> Forziere Segreto del DM
+            </h4>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              Questi oggetti sono completamente invisibili ai giocatori. Puoi prepararli, raggrupparli per forziere (es. <em>"Tesoro del Boss"</em>) e sbloccarli al momento opportuno con <strong>"Rivela al Party"</strong>.
+            </p>
+          </div>
+
+          {Object.keys(dmStashGroups).length === 0 ? (
+            <div className="glass-panel" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <Lock size={40} style={{ opacity: 0.4, marginBottom: '10px' }} />
+              <p style={{ fontSize: '1.1rem' }}>Il forziere del DM è vuoto.</p>
+              <p style={{ fontSize: '0.85rem' }}>Crea nuovi oggetti impostando la visibilità su <em>"DM Only"</em>.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+              {Object.entries(dmStashGroups).map(([groupName, groupItems]) => (
+                <div key={groupName} className="glass-panel" style={{ padding: '20px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Layers color="#fca5a5" size={20} />
+                      <div>
+                        <h3 style={{ fontSize: '1.25rem', color: '#fff' }}>{groupName}</h3>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{groupItems.length} oggetti nel forziere</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRevealLootGroup(groupName)}
+                      className="grimoire-btn grimoire-btn-gold"
+                      style={{ padding: '6px 14px', fontSize: '0.85rem' }}
+                    >
+                      <Sparkles size={14} /> Rivela al Party ✨
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                    {groupItems.map(item => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        isMaster={isMaster}
+                        onTransfer={() => {
+                          setTransferModalItem(item);
+                          setTargetCharId(item.assignedCharacterId || '');
+                        }}
+                        onEdit={() => openEditModal(item)}
+                        onDelete={() => handleDeleteItem(item.id)}
+                        onToggleVisibility={() => handleToggleVisibility(item)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal: Create or Edit Item */}
+      {(showAddModal || editingItem) && (
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -287,12 +515,14 @@ export const InventoryTab: React.FC = () => {
           zIndex: 1000,
           padding: '20px'
         }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '480px', width: '100%', padding: '28px' }}>
+          <div className="glass-panel animate-fade-in" style={{ maxWidth: '540px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>Aggiungi Nuovo Oggetto</h3>
-              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={20} /></button>
+              <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>
+                {editingItem ? 'Modifica Oggetto' : 'Aggiungi Nuovo Oggetto'}
+              </h3>
+              <button onClick={resetForm} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={20} /></button>
             </div>
-            <form onSubmit={handleCreateItem} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <form onSubmit={handleSaveItem} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Nome Oggetto</label>
                 <input className="grimoire-input" value={name} onChange={e => setName(e.target.value)} placeholder="es. Spada Fiammeggiante +1" required />
@@ -311,35 +541,77 @@ export const InventoryTab: React.FC = () => {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Tipo</label>
-                  <input className="grimoire-input" value={itemType} onChange={e => setItemType(e.target.value)} placeholder="Arma, Armatura, Pozione" />
+                  <input className="grimoire-input" value={itemType} onChange={e => setItemType(e.target.value)} placeholder="Arma, Armatura, Pozione, Tesoro" />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Valore</label>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Valore Monete</label>
                   <input className="grimoire-input" value={value} onChange={e => setValue(e.target.value)} placeholder="es. 150 mo" />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Assegna subito a:</label>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Peso (kg)</label>
+                  <input type="number" step="0.1" className="grimoire-input" value={weight} onChange={e => setWeight(e.target.value)} placeholder="es. 1.5" />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    Gruppo / Forziere (Loot Group)
+                  </label>
+                  <input
+                    className="grimoire-input"
+                    value={lootGroup}
+                    onChange={e => setLootGroup(e.target.value)}
+                    placeholder="es. Bottino dei Goblin"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Assegna a:</label>
                   <select className="grimoire-select" value={initialAssignedId} onChange={e => setInitialAssignedId(e.target.value)}>
                     <option value="">Nessuno (Loot Libero)</option>
                     {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Visibilità</label>
+                <select
+                  className="grimoire-select"
+                  value={visibility}
+                  onChange={e => setVisibility(e.target.value as any)}
+                >
+                  <option value="PUBLIC_PLAYERS">🌐 Pubblico ai Giocatori</option>
+                  <option value="PRIVATE_MASTER">🔒 DM Only (Nel Forziere Segreto)</option>
+                </select>
+              </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Descrizione e Proprietà Magiche</label>
                 <textarea className="grimoire-textarea" rows={3} value={description} onChange={e => setDescription(e.target.value)} placeholder="Effetti, danni extra, bonus CA..." />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={() => setShowAddModal(false)} className="grimoire-btn grimoire-btn-secondary">Annulla</button>
-                <button type="submit" className="grimoire-btn grimoire-btn-primary">Aggiungi al Forziere</button>
+
+              {/* Custom Properties Editor */}
+              <CustomPropertiesEditor
+                properties={customProperties}
+                onChange={setCustomProperties}
+                isMaster={isMaster}
+              />
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '14px' }}>
+                <button type="button" onClick={resetForm} className="grimoire-btn grimoire-btn-secondary">Annulla</button>
+                <button type="submit" className="grimoire-btn grimoire-btn-primary">
+                  {editingItem ? 'Salva Modifiche' : 'Aggiungi Oggetto'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
+      {/* Transfer Item Modal */}
       {transferModalItem && (
         <div style={{
           position: 'fixed',
@@ -387,6 +659,116 @@ export const InventoryTab: React.FC = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Item Card Component
+const ItemCard: React.FC<{
+  item: Item;
+  isMaster: boolean;
+  onTransfer: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleVisibility: () => void;
+}> = ({ item, isMaster, onTransfer, onEdit, onDelete, onToggleVisibility }) => {
+  const getRarityBadge = (r?: string) => {
+    const lower = (r || 'common').toLowerCase().replace(' ', '-');
+    return <span className={`badge badge-rarity-${lower}`}>{r || 'Comune'}</span>;
+  };
+
+  return (
+    <div className="glass-panel glass-panel-hover" style={{ padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <h3 style={{ fontSize: '1.2rem', color: '#fff' }}>{item.name}</h3>
+              {isMaster && (
+                <button
+                  onClick={onToggleVisibility}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  title={item.visibility === 'PRIVATE_MASTER' ? 'Privato DM (clicca per sbloccare ai player)' : 'Visibile ai player (clicca per nascondere)'}
+                >
+                  {item.visibility === 'PRIVATE_MASTER' ? (
+                    <span className="badge badge-rarity-legendary" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem' }}>
+                      <EyeOff size={10} /> DM
+                    </span>
+                  ) : (
+                    <span className="badge badge-rarity-uncommon" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem' }}>
+                      <Eye size={10} /> Pubblico
+                    </span>
+                  )}
+                </button>
+              )}
+            </div>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              {item.type || 'Oggetto'} {item.lootGroup ? `• [${item.lootGroup}]` : ''}
+            </span>
+          </div>
+          {getRarityBadge(item.rarity)}
+        </div>
+
+        {item.description && (
+          <p style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.4', margin: '8px 0 12px 0' }}>
+            {item.description}
+          </p>
+        )}
+
+        <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '8px' }}>
+          {item.value && <span>Valore: <strong style={{ color: '#fde68a' }}>{item.value}</strong></span>}
+          {item.weight && <span>Peso: <strong style={{ color: '#cbd5e1' }}>{item.weight} kg</strong></span>}
+        </div>
+
+        {/* Custom Properties */}
+        <CustomPropertiesView properties={item.customProperties} isMaster={isMaster} />
+      </div>
+
+      <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', marginTop: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Assegnato a:</span>
+          {item.assignedCharacter ? (
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent-gold)' }}>
+              👤 {item.assignedCharacter.name}
+            </span>
+          ) : (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+              Loot Libero
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button
+            onClick={onTransfer}
+            className="grimoire-btn grimoire-btn-secondary"
+            style={{ flex: 1, padding: '6px 8px', fontSize: '0.75rem' }}
+          >
+            <ArrowRightLeft size={12} /> Assegna / Passa
+          </button>
+
+          {isMaster && (
+            <>
+              <button
+                onClick={onEdit}
+                className="grimoire-btn grimoire-btn-secondary"
+                style={{ padding: '6px 8px' }}
+                title="Modifica Oggetto"
+              >
+                <Edit2 size={13} />
+              </button>
+              <button
+                onClick={onDelete}
+                className="grimoire-btn grimoire-btn-danger"
+                style={{ padding: '6px 8px' }}
+                title="Elimina Oggetto"
+              >
+                <Trash2 size={13} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

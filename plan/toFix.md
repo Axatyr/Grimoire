@@ -1,17 +1,7 @@
+
 Sprint 1:
-- Deve poter essere possibile aggiugnere proprieta (visibili solo a master o meno) nelle varie entita (personaggi, oggetti, bestiario ecc...) L'idea è avere proprietà fisse come adesso più delle proprietà aggiuntive customizzabili
-- Il master deve Poter modificare ciò che crea  
-- Se cancello un luogo padre, devo togliere il riferimento nei figli e avvisare l'utente
-- Su tutto avere la possibilità di mostrare ai giocatori o tenere segrete (es npc, luoghi, oggetti)
-- Sistemare inventario, di fatto il loot deve essere mostrabile ai player e gli item deve essere raggruppati in loot
-- Avere una gestione dell'inventario solo del DM
-
-
-Sprint 2:
-- Nei nodi aggiungere collegamenti con personaggi, npc, bestiario, luoghi ecc...
-- Allo story path devono essere ancorate le quest
-- Il personaggio deve vedere solo i nodi completati
-- Gestire la condivisione sia con un singolo giocatore che con tutti
+- I nodi collegati spariscono dalla prima vista principale e in quella innestata devono poter essere selezionabili ed espandibili
+- Aggiungere stato in progression per story path
 
 
 Backlog:
@@ -26,4 +16,13 @@ Backlog:
 - Gestione sincronicità delle modifiche
 - Aggiungere sezione spell
 - Aggiungere una caratteristica per archiviare / nascondere le entità (es. perso o venduto un'oggetto)
-
+- Aggiungere sezione dettagliata personaggio con la sua scheda
+- Aggiungo nota personaggio buggata
+- Gestione e conversione monete 
+- Aggiungere calendario di gioco solo per dm
+- Spostare i nodi, ordinamento eventi (occhio ai nodi associati) 
+- Aggiungere visualizzazione grafo dei nodi
+- Tab informazioni wiki (regole, statistiche eccc) vademecum
+- Ancora meglio, creare ACL per gestire gli oggetti a livello wiki
+- In automatico quando aggiungi una bestia si aggiunge anche alla campagna
+- Aggiungere cerca e filtro nella wiki

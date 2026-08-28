@@ -12,7 +12,7 @@ export interface Campaign {
   bannerUrl?: string;
   status: string;
   master?: { id: string; username: string; avatarUrl?: string };
-  members?: Array<{ user: { id: string; username: string; avatarUrl?: string } }>;
+  members?: Array<{ userId?: string; user: { id: string; username: string; avatarUrl?: string } }>;
   _count?: {
     characters: number;
     monsters: number;
@@ -26,6 +26,10 @@ export interface Campaign {
 export interface LiveHandout {
   type: string;
   payload: any;
+  targetUserId?: string | null;
+  targetUsername?: string | null;
+  isPrivate?: boolean;
+  senderName?: string;
   timestamp: string;
 }
 
@@ -39,7 +43,7 @@ interface CampaignContextType {
   setActiveCampaign: (campaign: Campaign | null) => void;
   fetchCampaigns: () => Promise<void>;
   dismissHandout: () => void;
-  broadcastHandout: (type: string, payload: any) => void;
+  broadcastHandout: (type: string, payload: any, targetUserId?: string | null, targetUsername?: string | null) => void;
 }
 
 const CampaignContext = createContext<CampaignContextType | undefined>(undefined);
@@ -100,11 +104,18 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLiveHandout(null);
   };
 
-  const broadcastHandout = (type: string, payload: any) => {
+  const broadcastHandout = (
+    type: string,
+    payload: any,
+    targetUserId?: string | null,
+    targetUsername?: string | null
+  ) => {
     const socket = getSocket();
     if (socket && activeCampaign) {
       socket.emit('live_broadcast', {
         campaignId: activeCampaign.id,
+        targetUserId: targetUserId || null,
+        targetUsername: targetUsername || null,
         type,
         payload
       });

@@ -4,6 +4,7 @@ import { prisma } from '../db/prisma.js';
 import { AuthRequest } from '../types/index.js';
 import { QuestStatus, Visibility } from '@prisma/client';
 import { getParam, getQueryParam } from '../utils/params.js';
+import { sanitizeEntity, sanitizeList } from '../utils/sanitize.js';
 
 export const questSchema = z.object({
   campaignId: z.string().uuid(),
@@ -14,6 +15,12 @@ export const questSchema = z.object({
   rewards: z.any().optional(),
   linkedNpcId: z.string().uuid().optional().nullable(),
   linkedLocationId: z.string().uuid().optional().nullable(),
+  customProperties: z.array(z.object({
+    id: z.string().optional(),
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean().default(false)
+  })).optional(),
   visibility: z.nativeEnum(Visibility).default(Visibility.PUBLIC_PLAYERS),
 });
 
@@ -37,7 +44,7 @@ export const getQuests = async (req: AuthRequest, res: Response, next: NextFunct
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json({ quests });
+    res.json({ quests: sanitizeList(quests, isMaster) });
   } catch (error) {
     next(error);
   }
@@ -46,6 +53,8 @@ export const getQuests = async (req: AuthRequest, res: Response, next: NextFunct
 export const getQuestById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const id = getParam(req, 'id');
+    const isMaster = req.user?.role === 'MASTER' || req.user?.role === 'ADMIN';
+
     const quest = await prisma.quest.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -59,7 +68,12 @@ export const getQuestById = async (req: AuthRequest, res: Response, next: NextFu
       return;
     }
 
-    res.json({ quest });
+    if (!isMaster && quest.visibility === Visibility.PRIVATE_MASTER) {
+      res.status(403).json({ error: 'Access denied' });
+      return;
+    }
+
+    res.json({ quest: sanitizeEntity(quest, isMaster) });
   } catch (error) {
     next(error);
   }

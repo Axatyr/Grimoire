@@ -3,6 +3,7 @@ import { useCampaign } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
 import { Image as ImageIcon, Upload, Link2, Sparkles, Trash2, X } from 'lucide-react';
+import { ShareModal } from './ShareModal';
 
 interface GrimoireImage {
   id: string;
@@ -13,12 +14,13 @@ interface GrimoireImage {
 }
 
 export const GalleryTab: React.FC = () => {
-  const { activeCampaign, broadcastHandout } = useCampaign();
+  const { activeCampaign } = useCampaign();
   const { user } = useAuth();
   const isMaster = user?.role === 'MASTER' || user?.role === 'ADMIN';
 
   const [images, setImages] = useState<GrimoireImage[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [sharingImage, setSharingImage] = useState<GrimoireImage | null>(null);
   const [mode, setMode] = useState<'UPLOAD' | 'LINK'>('LINK');
 
   // Form state
@@ -143,11 +145,11 @@ export const GalleryTab: React.FC = () => {
                 {isMaster && (
                   <div style={{ display: 'flex', gap: '8px', paddingTop: '10px', borderTop: '1px solid var(--border-subtle)' }}>
                     <button
-                      onClick={() => broadcastHandout('IMAGE', img)}
+                      onClick={() => setSharingImage(img)}
                       className="grimoire-btn grimoire-btn-gold"
                       style={{ flex: 1, padding: '6px 10px', fontSize: '0.8rem' }}
                     >
-                      <Sparkles size={14} /> Mostra ai Giocatori
+                      <Sparkles size={14} /> Mostra ai Giocatori...
                     </button>
                     <button
                       onClick={() => handleDeleteImage(img.id)}
@@ -163,6 +165,17 @@ export const GalleryTab: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Share Modal */}
+      {sharingImage && (
+        <ShareModal
+          isOpen={true}
+          onClose={() => setSharingImage(null)}
+          type="IMAGE"
+          title={sharingImage.altText || sharingImage.filename}
+          payload={sharingImage}
+        />
+      )}
 
       {/* Add Image Modal */}
       {showAddModal && (

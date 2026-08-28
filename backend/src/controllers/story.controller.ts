@@ -14,7 +14,7 @@ export const storyNodeSchema = z.object({
   positionX: z.number().optional().default(0),
   positionY: z.number().optional().default(0),
   links: z.array(z.object({
-    entityType: z.enum(['NPC', 'MONSTER', 'ITEM', 'LOCATION', 'QUEST']),
+    entityType: z.enum(['NPC', 'MONSTER', 'ITEM', 'LOCATION', 'QUEST', 'CHARACTER']),
     entityId: z.string().uuid(),
   })).optional(),
 });
@@ -27,27 +27,129 @@ export const storyEdgeSchema = z.object({
   condition: z.string().optional(),
 });
 
+// Helper to resolve linked entity titles & badges
+const resolveNodeLinks = async (links: Array<{ id: string; storyNodeId: string; entityType: string; entityId: string }>) => {
+  if (!links || links.length === 0) return [];
+
+  const resolved = await Promise.all(
+    links.map(async (link) => {
+      let entityName = 'Entità';
+      let extraInfo: Record<string, any> = {};
+
+      try {
+        switch (link.entityType) {
+          case 'NPC': {
+            const npc = await prisma.nPC.findUnique({ where: { id: link.entityId }, select: { name: true, role: true, faction: true } });
+            if (npc) {
+              entityName = npc.name;
+              extraInfo = { role: npc.role, faction: npc.faction };
+            }
+            break;
+          }
+          case 'MONSTER': {
+            const monster = await prisma.monster.findUnique({ where: { id: link.entityId }, select: { name: true, cr: true, hp: true, ac: true } });
+            if (monster) {
+              entityName = monster.name;
+              extraInfo = { cr: monster.cr, hp: monster.hp, ac: monster.ac };
+            }
+            break;
+          }
+          case 'LOCATION': {
+            const loc = await prisma.location.findUnique({ where: { id: link.entityId }, select: { name: true } });
+            if (loc) {
+              entityName = loc.name;
+            }
+            break;
+          }
+          case 'ITEM': {
+            const item = await prisma.item.findUnique({ where: { id: link.entityId }, select: { name: true, rarity: true, type: true } });
+            if (item) {
+              entityName = item.name;
+              extraInfo = { rarity: item.rarity, type: item.type };
+            }
+            break;
+          }
+          case 'QUEST': {
+            const quest = await prisma.quest.findUnique({ where: { id: link.entityId }, select: { title: true, status: true, objective: true } });
+            if (quest) {
+              entityName = quest.title;
+              extraInfo = { status: quest.status, objective: quest.objective };
+            }
+            break;
+          }
+          case 'CHARACTER': {
+            const char = await prisma.character.findUnique({ where: { id: link.entityId }, select: { name: true, class: true, level: true } });
+            if (char) {
+              entityName = char.name;
+              extraInfo = { class: char.class, level: char.level };
+            }
+            break;
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to resolve link ${link.entityType} ${link.entityId}`, err);
+      }
+
+      return {
+        ...link,
+        entityName,
+        extraInfo
+      };
+    })
+  );
+
+  return resolved;
+};
+
 export const getStoryGraph = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const campaignId = getParam(req, 'campaignId');
+    const isMaster = req.user?.role === 'MASTER' || req.user?.role === 'ADMIN';
 
-    const nodes = await prisma.storyNode.findMany({
-      where: { campaignId, deletedAt: null },
+    // Players only see in_progress, reached or altered nodes
+    const nodeFilter: any = {
+      campaignId,
+      deletedAt: null,
+      ...(!isMaster ? { status: { in: [StoryNodeStatus.IN_PROGRESS, StoryNodeStatus.REACHED, StoryNodeStatus.ALTERED] } } : {})
+    };
+
+    const rawNodes = await prisma.storyNode.findMany({
+      where: nodeFilter,
       include: {
         links: true,
       },
       orderBy: { createdAt: 'asc' }
     });
 
+    // Resolve link titles & details
+    const nodes = await Promise.all(
+      rawNodes.map(async (node) => {
+        const resolvedLinks = await resolveNodeLinks(node.links);
+        return {
+          ...node,
+          // Hide sensitive DM preparation details from player view if not Master
+          ...(!isMaster ? { content: undefined } : {}),
+          links: resolvedLinks
+        };
+      })
+    );
+
+    const visibleNodeIds = new Set(nodes.map(n => n.id));
+
+    // Filter edges to only those connecting visible nodes
     const edges = await prisma.storyEdge.findMany({
-      where: { campaignId },
+      where: {
+        campaignId,
+        fromNodeId: { in: Array.from(visibleNodeIds) },
+        toNodeId: { in: Array.from(visibleNodeIds) },
+      },
       include: {
         fromNode: { select: { id: true, title: true } },
         toNode: { select: { id: true, title: true } },
       }
     });
 
-    res.json({ nodes, edges });
+    res.json({ nodes, edges, isMaster });
   } catch (error) {
     next(error);
   }
@@ -61,13 +163,18 @@ export const createStoryNode = async (req: AuthRequest, res: Response, next: Nex
       data: {
         ...nodeData,
         links: links && links.length > 0 ? {
-          create: links
+          create: links.map((l: any) => ({
+            entityType: l.entityType,
+            entityId: l.entityId
+          }))
         } : undefined
       },
       include: { links: true }
     });
 
-    res.status(201).json({ node });
+    const resolvedLinks = await resolveNodeLinks(node.links);
+
+    res.status(201).json({ node: { ...node, links: resolvedLinks } });
   } catch (error) {
     next(error);
   }
@@ -82,17 +189,22 @@ export const updateStoryNode = async (req: AuthRequest, res: Response, next: Nex
       where: { id },
       data: {
         ...nodeData,
-        ...(links ? {
+        ...(links !== undefined ? {
           links: {
             deleteMany: {},
-            create: links
+            create: links.map((l: any) => ({
+              entityType: l.entityType,
+              entityId: l.entityId
+            }))
           }
         } : {})
       },
       include: { links: true }
     });
 
-    res.json({ node: updated });
+    const resolvedLinks = await resolveNodeLinks(updated.links);
+
+    res.json({ node: { ...updated, links: resolvedLinks } });
   } catch (error) {
     next(error);
   }
@@ -148,7 +260,7 @@ export const generateSessionRecap = async (req: AuthRequest, res: Response, next
     const reachedNodes = await prisma.storyNode.findMany({
       where: {
         campaignId,
-        status: { in: ['REACHED', 'ALTERED'] },
+        status: { in: ['IN_PROGRESS', 'REACHED', 'ALTERED'] },
         deletedAt: null,
       },
       include: { links: true },

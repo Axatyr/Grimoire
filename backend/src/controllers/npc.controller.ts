@@ -4,6 +4,7 @@ import { prisma } from '../db/prisma.js';
 import { AuthRequest } from '../types/index.js';
 import { Visibility } from '@prisma/client';
 import { getParam, getQueryParam } from '../utils/params.js';
+import { sanitizeEntity, sanitizeList } from '../utils/sanitize.js';
 
 export const npcSchema = z.object({
   campaignId: z.string().uuid(),
@@ -14,6 +15,12 @@ export const npcSchema = z.object({
   secrets: z.string().optional(),
   portraitUrl: z.string().optional().nullable(),
   locationId: z.string().uuid().optional().nullable(),
+  customProperties: z.array(z.object({
+    id: z.string().optional(),
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean().default(false)
+  })).optional(),
   visibility: z.nativeEnum(Visibility).default(Visibility.PUBLIC_PLAYERS),
 });
 
@@ -36,15 +43,7 @@ export const getNpcs = async (req: AuthRequest, res: Response, next: NextFunctio
       orderBy: { name: 'asc' }
     });
 
-    const sanitized = npcs.map(npc => {
-      if (!isMaster) {
-        const { secrets, ...rest } = npc;
-        return rest;
-      }
-      return npc;
-    });
-
-    res.json({ npcs: sanitized });
+    res.json({ npcs: sanitizeList(npcs, isMaster) });
   } catch (error) {
     next(error);
   }
@@ -73,13 +72,7 @@ export const getNpcById = async (req: AuthRequest, res: Response, next: NextFunc
       return;
     }
 
-    if (!isMaster) {
-      const { secrets, ...rest } = npc;
-      res.json({ npc: rest });
-      return;
-    }
-
-    res.json({ npc });
+    res.json({ npc: sanitizeEntity(npc, isMaster) });
   } catch (error) {
     next(error);
   }

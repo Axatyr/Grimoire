@@ -4,6 +4,7 @@ import { prisma } from '../db/prisma.js';
 import { AuthRequest } from '../types/index.js';
 import { Visibility } from '@prisma/client';
 import { getParam, getQueryParam } from '../utils/params.js';
+import { sanitizeEntity, sanitizeList } from '../utils/sanitize.js';
 
 export const locationSchema = z.object({
   campaignId: z.string().uuid(),
@@ -12,6 +13,12 @@ export const locationSchema = z.object({
   parentId: z.string().uuid().optional().nullable(),
   mapImageUrl: z.string().optional().nullable(),
   pointsOfInterest: z.any().optional(),
+  customProperties: z.array(z.object({
+    id: z.string().optional(),
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean().default(false)
+  })).optional(),
   visibility: z.nativeEnum(Visibility).default(Visibility.PUBLIC_PLAYERS),
 });
 
@@ -34,7 +41,7 @@ export const getLocations = async (req: AuthRequest, res: Response, next: NextFu
       orderBy: { name: 'asc' }
     });
 
-    res.json({ locations });
+    res.json({ locations: sanitizeList(locations, isMaster) });
   } catch (error) {
     next(error);
   }
@@ -43,6 +50,8 @@ export const getLocations = async (req: AuthRequest, res: Response, next: NextFu
 export const getLocationById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const id = getParam(req, 'id');
+    const isMaster = req.user?.role === 'MASTER' || req.user?.role === 'ADMIN';
+
     const location = await prisma.location.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -58,7 +67,12 @@ export const getLocationById = async (req: AuthRequest, res: Response, next: Nex
       return;
     }
 
-    res.json({ location });
+    if (!isMaster && location.visibility === Visibility.PRIVATE_MASTER) {
+      res.status(403).json({ error: 'Access denied' });
+      return;
+    }
+
+    res.json({ location: sanitizeEntity(location, isMaster) });
   } catch (error) {
     next(error);
   }
@@ -93,12 +107,22 @@ export const updateLocation = async (req: AuthRequest, res: Response, next: Next
 export const deleteLocation = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const id = getParam(req, 'id');
+
+    // Unlink all child locations
+    const unlinkedResult = await prisma.location.updateMany({
+      where: { parentId: id, deletedAt: null },
+      data: { parentId: null }
+    });
+
     await prisma.location.update({
       where: { id },
       data: { deletedAt: new Date() }
     });
 
-    res.json({ message: 'Location deleted successfully' });
+    res.json({
+      message: 'Location deleted successfully',
+      unlinkedCount: unlinkedResult.count
+    });
   } catch (error) {
     next(error);
   }

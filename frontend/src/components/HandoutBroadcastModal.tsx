@@ -1,13 +1,13 @@
 import React from 'react';
 import { useCampaign } from '../context/CampaignContext';
-import { Sparkles, X, Award } from 'lucide-react';
+import { X, Award, Lock, Users } from 'lucide-react';
 
 export const HandoutBroadcastModal: React.FC = () => {
   const { liveHandout, dismissHandout } = useCampaign();
 
   if (!liveHandout) return null;
 
-  const { type, payload } = liveHandout;
+  const { type, payload, isPrivate, targetUsername, senderName } = liveHandout;
 
   return (
     <div style={{
@@ -27,25 +27,44 @@ export const HandoutBroadcastModal: React.FC = () => {
         maxHeight: '90vh',
         overflowY: 'auto',
         padding: '30px',
-        border: '2px solid var(--accent-gold)',
-        boxShadow: '0 0 50px rgba(245, 158, 11, 0.3), 0 20px 40px rgba(0, 0, 0, 0.9)'
+        border: isPrivate ? '2px solid var(--accent-crimson)' : '2px solid var(--accent-gold)',
+        boxShadow: isPrivate
+          ? '0 0 50px rgba(239, 68, 68, 0.3), 0 20px 40px rgba(0, 0, 0, 0.9)'
+          : '0 0 50px rgba(245, 158, 11, 0.3), 0 20px 40px rgba(0, 0, 0, 0.9)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{
-              background: 'rgba(245, 158, 11, 0.2)',
-              border: '1px solid var(--border-gold)',
-              padding: '6px 12px',
-              borderRadius: '9999px',
-              color: 'var(--accent-gold)',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <Sparkles size={14} /> TRASMISSIONE DAL DUNGEON MASTER
-            </span>
+            {isPrivate ? (
+              <span style={{
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid rgba(239, 68, 68, 0.5)',
+                padding: '6px 12px',
+                borderRadius: '9999px',
+                color: '#fca5a5',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <Lock size={14} /> INDIZIO SEGRETO {targetUsername ? `PER ${targetUsername.toUpperCase()}` : 'SOLO PER TE'}
+              </span>
+            ) : (
+              <span style={{
+                background: 'rgba(245, 158, 11, 0.2)',
+                border: '1px solid var(--border-gold)',
+                padding: '6px 12px',
+                borderRadius: '9999px',
+                color: 'var(--accent-gold)',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <Users size={14} /> TRASMISSIONE A TUTTO IL PARTY ({senderName ? `DAL DM ${senderName}` : 'DAL MASTER'})
+              </span>
+            )}
           </div>
           <button
             onClick={dismissHandout}

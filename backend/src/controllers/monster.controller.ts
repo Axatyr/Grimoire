@@ -4,6 +4,7 @@ import { prisma } from '../db/prisma.js';
 import { AuthRequest } from '../types/index.js';
 import { Visibility } from '@prisma/client';
 import { getParam, getQueryParam } from '../utils/params.js';
+import { sanitizeEntity, sanitizeList } from '../utils/sanitize.js';
 
 export const monsterSchema = z.object({
   campaignId: z.string().uuid(),
@@ -16,6 +17,12 @@ export const monsterSchema = z.object({
   actions: z.any().optional(),
   description: z.string().optional(),
   imageUrl: z.string().optional().nullable(),
+  customProperties: z.array(z.object({
+    id: z.string().optional(),
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean().default(false)
+  })).optional(),
   visibility: z.nativeEnum(Visibility).default(Visibility.PRIVATE_MASTER),
 });
 
@@ -33,7 +40,7 @@ export const getMonsters = async (req: AuthRequest, res: Response, next: NextFun
       orderBy: { name: 'asc' }
     });
 
-    res.json({ monsters });
+    res.json({ monsters: sanitizeList(monsters, isMaster) });
   } catch (error) {
     next(error);
   }
@@ -42,6 +49,8 @@ export const getMonsters = async (req: AuthRequest, res: Response, next: NextFun
 export const getMonsterById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const id = getParam(req, 'id');
+    const isMaster = req.user?.role === 'MASTER' || req.user?.role === 'ADMIN';
+
     const monster = await prisma.monster.findFirst({
       where: { id, deletedAt: null }
     });
@@ -51,7 +60,12 @@ export const getMonsterById = async (req: AuthRequest, res: Response, next: Next
       return;
     }
 
-    res.json({ monster });
+    if (!isMaster && monster.visibility === Visibility.PRIVATE_MASTER) {
+      res.status(403).json({ error: 'Access denied' });
+      return;
+    }
+
+    res.json({ monster: sanitizeEntity(monster, isMaster) });
   } catch (error) {
     next(error);
   }

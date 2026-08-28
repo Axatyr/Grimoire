@@ -28,6 +28,7 @@ enum QuestStatus {
 
 enum StoryNodeStatus {
   PLANNED
+  IN_PROGRESS
   REACHED
   SKIPPED
   ALTERED
@@ -99,48 +100,50 @@ model CampaignMember {
 }
 
 model Character {
-  id             String      @id @default(uuid())
-  campaignId     String
-  userId         String?
-  name           String
-  race           String?
-  class          String?
-  level          Int         @default(1)
-  hpMax          Int         @default(10)
-  hpCurrent      Int         @default(10)
-  ac             Int         @default(10)
-  stats          Json?       // e.g. { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }
-  inventoryNotes String?
-  avatarUrl      String?
-  isNpc          Boolean     @default(false)
-  visibility     Visibility  @default(PUBLIC_PLAYERS)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  deletedAt      DateTime?
+  id               String      @id @default(uuid())
+  campaignId       String
+  userId           String?
+  name             String
+  race             String?
+  class            String?
+  level            Int         @default(1)
+  hpMax            Int         @default(10)
+  hpCurrent        Int         @default(10)
+  ac               Int         @default(10)
+  stats            Json?       // e.g. { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }
+  customProperties Json?       // Array of { id, key, value, isSecret }
+  inventoryNotes   String?
+  avatarUrl        String?
+  isNpc            Boolean     @default(false)
+  visibility       Visibility  @default(PUBLIC_PLAYERS)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
 
-  campaign       Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  user           User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  items          Item[]      @relation("CharacterInventory")
+  campaign         Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user             User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items            Item[]      @relation("CharacterInventory")
 }
 
 model Monster {
-  id          String      @id @default(uuid())
-  campaignId  String
-  name        String
-  cr          String?     // Challenge rating or level
-  type        String?     // Beast, Undead, Fiend, etc.
-  hp          Int         @default(10)
-  ac          Int         @default(10)
-  stats       Json?
-  actions     Json?       // List of attacks, spells, abilities
-  description String?
-  imageUrl    String?
-  visibility  Visibility  @default(PRIVATE_MASTER)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  deletedAt   DateTime?
+  id               String      @id @default(uuid())
+  campaignId       String
+  name             String
+  cr               String?     // Challenge rating or level
+  type             String?     // Beast, Undead, Fiend, etc.
+  hp               Int         @default(10)
+  ac               Int         @default(10)
+  stats            Json?
+  actions          Json?       // List of attacks, spells, abilities
+  customProperties Json?       // Array of { id, key, value, isSecret }
+  description      String?
+  imageUrl         String?
+  visibility       Visibility  @default(PRIVATE_MASTER)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
 
-  campaign    Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign         Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
 
 model Item {
@@ -153,6 +156,8 @@ model Item {
   value               String?     // e.g. "50 gp"
   weight              Float?
   properties          Json?
+  customProperties    Json?       // Array of { id, key, value, isSecret }
+  lootGroup           String?     // e.g. "Forziere della Cripta", "Loot Boss"
   assignedCharacterId String?
   visibility          Visibility  @default(PUBLIC_PLAYERS)
   createdAt           DateTime    @default(now())
@@ -171,6 +176,7 @@ model Location {
   parentId          String?
   mapImageUrl       String?
   pointsOfInterest  Json?
+  customProperties  Json?       // Array of { id, key, value, isSecret }
   visibility        Visibility  @default(PUBLIC_PLAYERS)
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -184,23 +190,24 @@ model Location {
 }
 
 model NPC {
-  id          String      @id @default(uuid())
-  campaignId  String
-  name        String
-  role        String?     // Tavern keeper, Guildmaster, Spy
-  faction     String?
-  attitude    String?     // Friendly, Neutral, Hostile
-  secrets     String?     // Master only secret notes
-  portraitUrl String?
-  locationId  String?
-  visibility  Visibility  @default(PUBLIC_PLAYERS)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  deletedAt   DateTime?
+  id               String      @id @default(uuid())
+  campaignId       String
+  name             String
+  role             String?     // Tavern keeper, Guildmaster, Spy
+  faction          String?
+  attitude         String?     // Friendly, Neutral, Hostile
+  secrets          String?     // Master only secret notes
+  customProperties Json?       // Array of { id, key, value, isSecret }
+  portraitUrl      String?
+  locationId       String?
+  visibility       Visibility  @default(PUBLIC_PLAYERS)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
 
-  campaign    Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  location    Location?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  quests      Quest[]
+  campaign         Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  location         Location?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  quests           Quest[]
 }
 
 model Quest {
@@ -211,6 +218,7 @@ model Quest {
   description      String?
   status           QuestStatus @default(ACTIVE)
   rewards          Json?
+  customProperties Json?       // Array of { id, key, value, isSecret }
   linkedNpcId      String?
   linkedLocationId String?
   visibility       Visibility  @default(PUBLIC_PLAYERS)
@@ -224,19 +232,20 @@ model Quest {
 }
 
 model Event {
-  id          String      @id @default(uuid())
-  campaignId  String
-  title       String
-  dateInGame  String?
-  realDate    DateTime?
-  description String?
-  importance  String?     // Low, Medium, High, Critical
-  visibility  Visibility  @default(PUBLIC_PLAYERS)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  deletedAt   DateTime?
+  id               String      @id @default(uuid())
+  campaignId       String
+  title            String
+  dateInGame       String?
+  realDate         DateTime?
+  description      String?
+  importance       String?     // Low, Medium, High, Critical
+  customProperties Json?
+  visibility       Visibility  @default(PUBLIC_PLAYERS)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
 
-  campaign    Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign         Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
 
 model StoryNode {
@@ -281,19 +290,20 @@ model StoryNodeLink {
 }
 
 model Note {
-  id          String      @id @default(uuid())
-  campaignId  String
-  authorId    String
-  title       String
-  content     String
-  isPublic    Boolean     @default(false)
-  sessionDate DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  deletedAt   DateTime?
+  id               String      @id @default(uuid())
+  campaignId       String
+  authorId         String
+  title            String
+  content          String
+  isPublic         Boolean     @default(false)
+  sessionDate      DateTime?
+  customProperties Json?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
 
-  campaign    Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  campaign         Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  author           User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }
 
 model Log {

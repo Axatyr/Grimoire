@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useCampaign } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
-import { Plus, Sparkles, Trash2, Skull, X } from 'lucide-react';
+import { Plus, Sparkles, Trash2, Skull, Edit2, X, Eye, EyeOff } from 'lucide-react';
+import { CustomPropertiesEditor, CustomPropertiesView, type CustomProperty } from './CustomPropertiesEditor';
+import { ShareModal } from './ShareModal';
 
 interface Monster {
   id: string;
@@ -14,15 +16,18 @@ interface Monster {
   description?: string;
   imageUrl?: string;
   visibility: 'PRIVATE_MASTER' | 'PUBLIC_PLAYERS';
+  customProperties?: CustomProperty[];
 }
 
 export const MonstersTab: React.FC = () => {
-  const { activeCampaign, broadcastHandout } = useCampaign();
+  const { activeCampaign } = useCampaign();
   const { user } = useAuth();
   const isMaster = user?.role === 'MASTER' || user?.role === 'ADMIN';
 
   const [monsters, setMonsters] = useState<Monster[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingMonster, setEditingMonster] = useState<Monster | null>(null);
+  const [sharingMonster, setSharingMonster] = useState<Monster | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -32,6 +37,8 @@ export const MonstersTab: React.FC = () => {
   const [ac, setAc] = useState(13);
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [visibility, setVisibility] = useState<'PRIVATE_MASTER' | 'PUBLIC_PLAYERS'>('PRIVATE_MASTER');
+  const [customProperties, setCustomProperties] = useState<CustomProperty[]>([]);
 
   const fetchMonsters = async () => {
     if (!activeCampaign) return;
@@ -47,36 +54,93 @@ export const MonstersTab: React.FC = () => {
     fetchMonsters();
   }, [activeCampaign?.id]);
 
-  const handleCreateMonster = async (e: React.FormEvent) => {
+  const resetForm = () => {
+    setName('');
+    setCr('1/2');
+    setMonsterType('Bestia');
+    setHp(20);
+    setAc(13);
+    setDescription('');
+    setImageUrl('');
+    setVisibility('PRIVATE_MASTER');
+    setCustomProperties([]);
+    setEditingMonster(null);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setShowAddModal(true);
+  };
+
+  const openEditModal = (monster: Monster) => {
+    setEditingMonster(monster);
+    setName(monster.name);
+    setCr(monster.cr || '1/2');
+    setMonsterType(monster.type || 'Bestia');
+    setHp(monster.hp);
+    setAc(monster.ac);
+    setDescription(monster.description || '');
+    setImageUrl(monster.imageUrl || '');
+    setVisibility(monster.visibility || 'PRIVATE_MASTER');
+    setCustomProperties(Array.isArray(monster.customProperties) ? monster.customProperties : []);
+    setShowAddModal(false);
+  };
+
+  const handleSaveMonster = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !activeCampaign) return;
+
+    const payload = {
+      campaignId: activeCampaign.id,
+      name,
+      cr,
+      type: monsterType,
+      hp: Number(hp),
+      ac: Number(ac),
+      description,
+      imageUrl: imageUrl || undefined,
+      visibility,
+      customProperties
+    };
+
     try {
-      const res = await apiFetch('/monsters', {
-        method: 'POST',
-        body: JSON.stringify({
-          campaignId: activeCampaign.id,
-          name,
-          cr,
-          type: monsterType,
-          hp: Number(hp),
-          ac: Number(ac),
-          description,
-          imageUrl: imageUrl || undefined,
-          visibility: 'PRIVATE_MASTER'
-        })
-      });
-      setMonsters(prev => [...prev, res.monster]);
-      setShowAddModal(false);
-      setName('');
-      setDescription('');
-      setImageUrl('');
+      if (editingMonster) {
+        const res = await apiFetch(`/monsters/${editingMonster.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        setMonsters(prev => prev.map(m => m.id === editingMonster.id ? res.monster : m));
+        setEditingMonster(null);
+      } else {
+        const res = await apiFetch('/monsters', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        setMonsters(prev => [...prev, res.monster]);
+        setShowAddModal(false);
+      }
+      resetForm();
     } catch (err: any) {
-      alert(err.message || 'Errore creazione mostro');
+      alert(err.message || 'Errore salvataggio creatura');
+    }
+  };
+
+  const handleToggleVisibility = async (monster: Monster) => {
+    if (!isMaster) return;
+    const nextVis = monster.visibility === 'PUBLIC_PLAYERS' ? 'PRIVATE_MASTER' : 'PUBLIC_PLAYERS';
+    try {
+      const res = await apiFetch(`/monsters/${monster.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ visibility: nextVis })
+      });
+      setMonsters(prev => prev.map(m => m.id === monster.id ? res.monster : m));
+    } catch (err: any) {
+      alert(err.message || 'Errore modifica visibilità');
     }
   };
 
   const handleDeleteMonster = async (monsterId: string) => {
-    if (!confirm('Eliminare questo mostro dal bestiario?')) return;
+    if (!confirm('Eliminare questa creatura dal bestiario?')) return;
     try {
       await apiFetch(`/monsters/${monsterId}`, { method: 'DELETE' });
       setMonsters(prev => prev.filter(m => m.id !== monsterId));
@@ -95,12 +159,12 @@ export const MonstersTab: React.FC = () => {
             <Skull color="var(--accent-crimson)" /> Bestiario & Creature
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>
-            Mostri, nemici, statistiche di combattimento e trasmissione immediata della scheda ai giocatori.
+            Mostri, nemici, statistiche di combattimento, proprietà custom e trasmissione live ai giocatori.
           </p>
         </div>
 
         {isMaster && (
-          <button onClick={() => setShowAddModal(true)} className="grimoire-btn grimoire-btn-primary">
+          <button onClick={openCreateModal} className="grimoire-btn grimoire-btn-primary">
             <Plus size={16} /> Aggiungi Mostro al Bestiario
           </button>
         )}
@@ -118,7 +182,26 @@ export const MonstersTab: React.FC = () => {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.3rem', color: '#fff' }}>{monster.name}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ fontSize: '1.3rem', color: '#fff' }}>{monster.name}</h3>
+                    {isMaster && (
+                      <button
+                        onClick={() => handleToggleVisibility(monster)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        title={monster.visibility === 'PRIVATE_MASTER' ? 'Privato al Master (clicca per rendere pubblico ai player)' : 'Visibile ai giocatori (clicca per nascondere)'}
+                      >
+                        {monster.visibility === 'PRIVATE_MASTER' ? (
+                          <span className="badge badge-rarity-legendary" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <EyeOff size={11} /> DM Only
+                          </span>
+                        ) : (
+                          <span className="badge badge-rarity-uncommon" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Eye size={11} /> Pubblico
+                          </span>
+                        )}
+                      </button>
+                    )}
+                  </div>
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{monster.type || 'Creatura'} • Grado: {monster.cr || '1'}</span>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -128,25 +211,37 @@ export const MonstersTab: React.FC = () => {
               </div>
 
               {monster.description && (
-                <p style={{ color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: '1.4', margin: '10px 0 16px 0', whiteSpace: 'pre-wrap' }}>
+                <p style={{ color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: '1.4', margin: '10px 0 12px 0', whiteSpace: 'pre-wrap' }}>
                   {monster.description}
                 </p>
               )}
+
+              {/* Custom Properties */}
+              <CustomPropertiesView properties={monster.customProperties} isMaster={isMaster} />
             </div>
 
             {isMaster && (
-              <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', marginTop: '12px' }}>
                 <button
-                  onClick={() => broadcastHandout('MONSTER', monster)}
+                  onClick={() => setSharingMonster(monster)}
                   className="grimoire-btn grimoire-btn-gold"
                   style={{ flex: 1, padding: '7px 10px', fontSize: '0.8rem' }}
                 >
-                  <Sparkles size={14} /> Mostra ai Giocatori
+                  <Sparkles size={14} /> Mostra ai Giocatori...
+                </button>
+                <button
+                  onClick={() => openEditModal(monster)}
+                  className="grimoire-btn grimoire-btn-secondary"
+                  style={{ padding: '7px 10px' }}
+                  title="Modifica Mostro"
+                >
+                  <Edit2 size={14} />
                 </button>
                 <button
                   onClick={() => handleDeleteMonster(monster.id)}
                   className="grimoire-btn grimoire-btn-danger"
                   style={{ padding: '7px 10px' }}
+                  title="Elimina Mostro"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -156,7 +251,19 @@ export const MonstersTab: React.FC = () => {
         ))}
       </div>
 
-      {showAddModal && (
+      {/* Share Modal */}
+      {sharingMonster && (
+        <ShareModal
+          isOpen={true}
+          onClose={() => setSharingMonster(null)}
+          type="MONSTER"
+          title={sharingMonster.name}
+          payload={sharingMonster}
+        />
+      )}
+
+      {/* Create / Edit Monster Modal */}
+      {(showAddModal || editingMonster) && (
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -168,12 +275,16 @@ export const MonstersTab: React.FC = () => {
           zIndex: 1000,
           padding: '20px'
         }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '500px', width: '100%', padding: '28px' }}>
+          <div className="glass-panel animate-fade-in" style={{ maxWidth: '540px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>Aggiungi Creatura al Bestiario</h3>
-              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={20} /></button>
+              <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>
+                {editingMonster ? 'Modifica Creatura' : 'Aggiungi Creatura al Bestiario'}
+              </h3>
+              <button onClick={resetForm} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
             </div>
-            <form onSubmit={handleCreateMonster} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <form onSubmit={handleSaveMonster} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Nome Mostro</label>
                 <input className="grimoire-input" value={name} onChange={e => setName(e.target.value)} placeholder="es. Drago Rosso Adulto" required />
@@ -188,7 +299,7 @@ export const MonstersTab: React.FC = () => {
                   <input className="grimoire-input" value={cr} onChange={e => setCr(e.target.value)} placeholder="es. 1/4, 5, 17" />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Punti Ferita (HP)</label>
                   <input type="number" min="1" className="grimoire-input" value={hp} onChange={e => setHp(Number(e.target.value))} />
@@ -196,6 +307,17 @@ export const MonstersTab: React.FC = () => {
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Classe Armatura (CA)</label>
                   <input type="number" min="1" className="grimoire-input" value={ac} onChange={e => setAc(Number(e.target.value))} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Visibilità</label>
+                  <select
+                    className="grimoire-select"
+                    value={visibility}
+                    onChange={e => setVisibility(e.target.value as any)}
+                  >
+                    <option value="PRIVATE_MASTER">🔒 DM Only</option>
+                    <option value="PUBLIC_PLAYERS">🌐 Pubblico</option>
+                  </select>
                 </div>
               </div>
               <div>
@@ -206,9 +328,19 @@ export const MonstersTab: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Azioni & Descrizione</label>
                 <textarea className="grimoire-textarea" rows={3} value={description} onChange={e => setDescription(e.target.value)} placeholder="Attacchi speciali, soffio di fuoco, resistenze..." />
               </div>
+
+              {/* Custom Properties Editor */}
+              <CustomPropertiesEditor
+                properties={customProperties}
+                onChange={setCustomProperties}
+                isMaster={isMaster}
+              />
+
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={() => setShowAddModal(false)} className="grimoire-btn grimoire-btn-secondary">Annulla</button>
-                <button type="submit" className="grimoire-btn grimoire-btn-primary">Salva Creatura</button>
+                <button type="button" onClick={resetForm} className="grimoire-btn grimoire-btn-secondary">Annulla</button>
+                <button type="submit" className="grimoire-btn grimoire-btn-primary">
+                  {editingMonster ? 'Salva Modifiche' : 'Salva Creatura'}
+                </button>
               </div>
             </form>
           </div>
