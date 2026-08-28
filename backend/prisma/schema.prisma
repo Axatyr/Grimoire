@@ -1,0 +1,339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MASTER
+  PLAYER
+  ADMIN
+}
+
+enum Visibility {
+  PRIVATE_MASTER
+  PUBLIC_PLAYERS
+  ASSIGNED_ONLY
+}
+
+enum QuestStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  FAILED
+}
+
+enum StoryNodeStatus {
+  PLANNED
+  REACHED
+  SKIPPED
+  ALTERED
+}
+
+enum ImageSourceType {
+  UPLOADED
+  EXTERNAL_URL
+}
+
+model User {
+  id           String           @id @default(uuid())
+  username     String           @unique
+  email        String?          @unique
+  passwordHash String
+  role         Role             @default(PLAYER)
+  avatarUrl    String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  deletedAt    DateTime?
+
+  campaignsMastered Campaign[]       @relation("MasterCampaigns")
+  memberships       CampaignMember[]
+  characters        Character[]
+  notes             Note[]
+  logs              Log[]
+}
+
+model Campaign {
+  id          String           @id @default(uuid())
+  title       String
+  description String?
+  system      String           @default("D&D 5e")
+  masterId    String
+  bannerUrl   String?
+  status      String           @default("ACTIVE")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+
+  master      User             @relation("MasterCampaigns", fields: [masterId], references: [id], onDelete: Cascade)
+  members     CampaignMember[]
+  characters  Character[]
+  monsters    Monster[]
+  items       Item[]
+  locations   Location[]
+  quests      Quest[]
+  npcs        NPC[]
+  events      Event[]
+  storyNodes  StoryNode[]
+  storyEdges  StoryEdge[]
+  notes       Note[]
+  logs        Log[]
+  images      Image[]
+  tags        Tag[]
+}
+
+model CampaignMember {
+  id         String    @id @default(uuid())
+  campaignId String
+  userId     String
+  role       Role      @default(PLAYER)
+  joinedAt   DateTime  @default(now())
+
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+}
+
+model Character {
+  id             String      @id @default(uuid())
+  campaignId     String
+  userId         String?
+  name           String
+  race           String?
+  class          String?
+  level          Int         @default(1)
+  hpMax          Int         @default(10)
+  hpCurrent      Int         @default(10)
+  ac             Int         @default(10)
+  stats          Json?       // e.g. { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }
+  inventoryNotes String?
+  avatarUrl      String?
+  isNpc          Boolean     @default(false)
+  visibility     Visibility  @default(PUBLIC_PLAYERS)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  campaign       Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user           User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items          Item[]      @relation("CharacterInventory")
+}
+
+model Monster {
+  id          String      @id @default(uuid())
+  campaignId  String
+  name        String
+  cr          String?     // Challenge rating or level
+  type        String?     // Beast, Undead, Fiend, etc.
+  hp          Int         @default(10)
+  ac          Int         @default(10)
+  stats       Json?
+  actions     Json?       // List of attacks, spells, abilities
+  description String?
+  imageUrl    String?
+  visibility  Visibility  @default(PRIVATE_MASTER)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+
+  campaign    Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model Item {
+  id                  String      @id @default(uuid())
+  campaignId          String
+  name                String
+  description         String?
+  rarity              String?     // Common, Uncommon, Rare, Very Rare, Legendary, Artifact
+  type                String?     // Weapon, Armor, Potion, Tool, Treasure
+  value               String?     // e.g. "50 gp"
+  weight              Float?
+  properties          Json?
+  assignedCharacterId String?
+  visibility          Visibility  @default(PUBLIC_PLAYERS)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  deletedAt           DateTime?
+
+  campaign            Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignedCharacter   Character?  @relation("CharacterInventory", fields: [assignedCharacterId], references: [id], onDelete: SetNull)
+}
+
+model Location {
+  id                String      @id @default(uuid())
+  campaignId        String
+  name              String
+  description       String?
+  parentId          String?
+  mapImageUrl       String?
+  pointsOfInterest  Json?
+  visibility        Visibility  @default(PUBLIC_PLAYERS)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  deletedAt         DateTime?
+
+  campaign          Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  parent            Location?   @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children          Location[]  @relation("LocationHierarchy")
+  npcs              NPC[]
+  quests            Quest[]
+}
+
+model NPC {
+  id          String      @id @default(uuid())
+  campaignId  String
+  name        String
+  role        String?     // Tavern keeper, Guildmaster, Spy
+  faction     String?
+  attitude    String?     // Friendly, Neutral, Hostile
+  secrets     String?     // Master only secret notes
+  portraitUrl String?
+  locationId  String?
+  visibility  Visibility  @default(PUBLIC_PLAYERS)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+
+  campaign    Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  location    Location?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  quests      Quest[]
+}
+
+model Quest {
+  id               String      @id @default(uuid())
+  campaignId       String
+  title            String
+  objective        String
+  description      String?
+  status           QuestStatus @default(ACTIVE)
+  rewards          Json?
+  linkedNpcId      String?
+  linkedLocationId String?
+  visibility       Visibility  @default(PUBLIC_PLAYERS)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
+
+  campaign         Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  linkedNpc        NPC?        @relation(fields: [linkedNpcId], references: [id], onDelete: SetNull)
+  linkedLocation   Location?   @relation(fields: [linkedLocationId], references: [id], onDelete: SetNull)
+}
+
+model Event {
+  id          String      @id @default(uuid())
+  campaignId  String
+  title       String
+  dateInGame  String?
+  realDate    DateTime?
+  description String?
+  importance  String?     // Low, Medium, High, Critical
+  visibility  Visibility  @default(PUBLIC_PLAYERS)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+
+  campaign    Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model StoryNode {
+  id          String          @id @default(uuid())
+  campaignId  String
+  title       String
+  summary     String?
+  status      StoryNodeStatus @default(PLANNED)
+  content     String?         // Full rich markdown or prep details
+  positionX   Float?          @default(0)
+  positionY   Float?          @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+
+  campaign    Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  outgoing    StoryEdge[]     @relation("OutgoingEdges")
+  incoming    StoryEdge[]     @relation("IncomingEdges")
+  links       StoryNodeLink[]
+}
+
+model StoryEdge {
+  id          String    @id @default(uuid())
+  campaignId  String
+  fromNodeId  String
+  toNodeId    String
+  choiceLabel String?   // "Player choose to negotiate", "Defeated the boss"
+  condition   String?
+
+  campaign    Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fromNode    StoryNode @relation("OutgoingEdges", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode      StoryNode @relation("IncomingEdges", fields: [toNodeId], references: [id], onDelete: Cascade)
+}
+
+model StoryNodeLink {
+  id          String    @id @default(uuid())
+  storyNodeId String
+  entityType  String    // NPC, MONSTER, ITEM, LOCATION, QUEST
+  entityId    String
+
+  storyNode   StoryNode @relation(fields: [storyNodeId], references: [id], onDelete: Cascade)
+}
+
+model Note {
+  id          String      @id @default(uuid())
+  campaignId  String
+  authorId    String
+  title       String
+  content     String
+  isPublic    Boolean     @default(false)
+  sessionDate DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+
+  campaign    Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Log {
+  id          String      @id @default(uuid())
+  campaignId  String
+  authorId    String
+  title       String
+  content     String
+  sessionDate DateTime?   @default(now())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+
+  campaign    Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Image {
+  id          String          @id @default(uuid())
+  campaignId  String
+  filename    String
+  mimeType    String?
+  size        Int?
+  sourceType  ImageSourceType @default(UPLOADED)
+  url         String
+  altText     String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+
+  campaign    Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model Tag {
+  id         String   @id @default(uuid())
+  name       String
+  campaignId String
+  createdAt  DateTime @default(now())
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, name])
+}
