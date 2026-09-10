@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useCampaign } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch } from '../services/api';
+import { apiFetch, BACKEND_URL } from '../services/api';
+
 import { Image as ImageIcon, Upload, Link2, Sparkles, Trash2, X } from 'lucide-react';
 import { ShareModal } from './ShareModal';
 
@@ -123,7 +124,7 @@ export const GalleryTab: React.FC = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
         {images.map(img => {
-          const displayUrl = img.url.startsWith('http') ? img.url : `http://localhost:4000${img.url}`;
+          const displayUrl = img.url.startsWith('http') ? img.url : `${BACKEND_URL}${img.url}`;
           return (
             <div key={img.id} className="glass-panel glass-panel-hover" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <div style={{ height: '200px', width: '100%', background: '#070a10', position: 'relative' }}>

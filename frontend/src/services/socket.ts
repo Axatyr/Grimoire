@@ -1,6 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000';
+const BACKEND_HOST = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `http://${BACKEND_HOST}:4000`;
+
 
 let socket: Socket | null = null;
 

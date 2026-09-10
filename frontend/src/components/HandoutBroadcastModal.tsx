@@ -1,6 +1,8 @@
 import React from 'react';
 import { useCampaign } from '../context/CampaignContext';
 import { X, Award, Lock, Users } from 'lucide-react';
+import { BACKEND_URL } from '../services/api';
+
 
 export const HandoutBroadcastModal: React.FC = () => {
   const { liveHandout, dismissHandout } = useCampaign();
@@ -90,7 +92,7 @@ export const HandoutBroadcastModal: React.FC = () => {
           <div>
             <h3 style={{ fontSize: '1.4rem', color: '#fff', marginBottom: '12px' }}>{payload.altText || payload.filename}</h3>
             <img
-              src={payload.url.startsWith('http') ? payload.url : `http://localhost:4000${payload.url}`}
+              src={payload.url.startsWith('http') ? payload.url : `${BACKEND_URL}${payload.url}`}
               alt={payload.altText || 'Handout'}
               style={{
                 width: '100%',
@@ -118,7 +120,7 @@ export const HandoutBroadcastModal: React.FC = () => {
             </div>
             {payload.imageUrl && (
               <img
-                src={payload.imageUrl.startsWith('http') ? payload.imageUrl : `http://localhost:4000${payload.imageUrl}`}
+                src={payload.imageUrl.startsWith('http') ? payload.imageUrl : `${BACKEND_URL}${payload.imageUrl}`}
                 alt={payload.name}
                 style={{ width: '100%', maxHeight: '250px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', marginBottom: '14px' }}
               />

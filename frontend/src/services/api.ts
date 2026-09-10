@@ -1,4 +1,7 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const BACKEND_HOST = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+export const BACKEND_URL = `http://${BACKEND_HOST}:4000`;
+const API_BASE = import.meta.env.VITE_API_URL || `${BACKEND_URL}/api`;
+
 
 export const apiFetch = async <T = any>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   const token = localStorage.getItem('grimoire_token');
