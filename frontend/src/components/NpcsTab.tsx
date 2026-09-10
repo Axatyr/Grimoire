@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useCampaign } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
-import { UserCheck, Plus, Eye, EyeOff, MapPin, Trash2, Edit2, X } from 'lucide-react';
+import { UserCheck, Plus, Eye, EyeOff, MapPin, Trash2, Edit2, X, Search, RotateCcw } from 'lucide-react';
 import { CustomPropertiesEditor, CustomPropertiesView, type CustomProperty } from './CustomPropertiesEditor';
 
 interface NPC {
@@ -28,6 +28,12 @@ export const NpcsTab: React.FC = () => {
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingNpc, setEditingNpc] = useState<NPC | null>(null);
+
+  // Wiki Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterAttitude, setFilterAttitude] = useState('ALL');
+  const [filterLocation, setFilterLocation] = useState('ALL');
+  const [filterVisibility, setFilterVisibility] = useState('ALL');
 
   // Form state
   const [name, setName] = useState('');
@@ -161,11 +167,37 @@ export const NpcsTab: React.FC = () => {
     }
   };
 
+  const filteredNpcs = npcs.filter(npc => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchName = npc.name.toLowerCase().includes(q);
+      const matchRole = npc.role?.toLowerCase().includes(q);
+      const matchFaction = npc.faction?.toLowerCase().includes(q);
+      const matchSecrets = npc.secrets?.toLowerCase().includes(q);
+      const matchLoc = npc.location?.name.toLowerCase().includes(q);
+      if (!matchName && !matchRole && !matchFaction && !matchSecrets && !matchLoc) return false;
+    }
+
+    if (filterAttitude !== 'ALL' && npc.attitude !== filterAttitude) return false;
+    if (filterLocation !== 'ALL' && npc.locationId !== filterLocation) return false;
+    if (filterVisibility !== 'ALL' && npc.visibility !== filterVisibility) return false;
+
+    return true;
+  });
+
+  const isNpcFiltered = searchQuery.trim() !== '' || filterAttitude !== 'ALL' || filterLocation !== 'ALL' || filterVisibility !== 'ALL';
+  const resetNpcFilters = () => {
+    setSearchQuery('');
+    setFilterAttitude('ALL');
+    setFilterLocation('ALL');
+    setFilterVisibility('ALL');
+  };
+
   if (!activeCampaign) return null;
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <UserCheck color="var(--primary)" /> Personaggi Non Giocanti (NPC)
@@ -182,8 +214,126 @@ export const NpcsTab: React.FC = () => {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-        {npcs.map(npc => (
+      {/* Wiki Search & Filter Toolbar */}
+      <div className="glass-panel" style={{
+        padding: '14px 18px',
+        marginBottom: '22px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '12px',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', flex: 1 }}>
+          {/* Text Search */}
+          <div style={{ position: 'relative', minWidth: '240px', flex: '1 1 240px' }}>
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              className="grimoire-input"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Cerca NPC per nome, ruolo, fazione, segreti..."
+              style={{ paddingLeft: '36px', paddingRight: searchQuery ? '32px' : '12px', height: '38px', fontSize: '0.85rem' }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* Attitude Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Atteggiamento:</span>
+            <select
+              className="grimoire-select"
+              value={filterAttitude}
+              onChange={e => setFilterAttitude(e.target.value)}
+              style={{ height: '38px', fontSize: '0.82rem', minWidth: '120px' }}
+            >
+              <option value="ALL">Tutti</option>
+              <option value="Amichevole">Amichevole</option>
+              <option value="Neutrale">Neutrale</option>
+              <option value="Ostile">Ostile</option>
+            </select>
+          </div>
+
+          {/* Location Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Luogo:</span>
+            <select
+              className="grimoire-select"
+              value={filterLocation}
+              onChange={e => setFilterLocation(e.target.value)}
+              style={{ height: '38px', fontSize: '0.82rem', minWidth: '140px' }}
+            >
+              <option value="ALL">Tutti i Luoghi</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>📍 {loc.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Visibility Filter (Master Only) */}
+          {isMaster && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Visibilità:</span>
+              <select
+                className="grimoire-select"
+                value={filterVisibility}
+                onChange={e => setFilterVisibility(e.target.value)}
+                style={{ height: '38px', fontSize: '0.82rem', minWidth: '120px' }}
+              >
+                <option value="ALL">Tutti</option>
+                <option value="PUBLIC_PLAYERS">Pubblici (Player)</option>
+                <option value="PRIVATE_MASTER">Privati (Solo DM)</option>
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Results Info & Reset */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            <strong>{filteredNpcs.length}</strong> {filteredNpcs.length === 1 ? 'PNG' : 'PNG'}
+          </span>
+          {isNpcFiltered && (
+            <button
+              onClick={resetNpcFilters}
+              className="grimoire-btn grimoire-btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem', gap: '6px' }}
+            >
+              <RotateCcw size={13} /> Azzera Filtri
+            </button>
+          )}
+        </div>
+      </div>
+
+      {filteredNpcs.length === 0 ? (
+        <div className="glass-panel" style={{ padding: '50px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <UserCheck size={40} style={{ margin: '0 auto 12px auto', opacity: 0.4 }} />
+          <h3 style={{ color: '#fff', marginBottom: '8px' }}>Nessun PNG trovato</h3>
+          <p style={{ fontSize: '0.9rem', marginBottom: '16px' }}>
+            {isNpcFiltered
+              ? 'Nessun personaggio corrisponde ai criteri di ricerca o ai filtri impostati.'
+              : 'Nessun PNG registrato in questa campagna.'}
+          </p>
+          {isNpcFiltered ? (
+            <button onClick={resetNpcFilters} className="grimoire-btn grimoire-btn-secondary">
+              <RotateCcw size={14} /> Mostra Tutti i PNG
+            </button>
+          ) : isMaster ? (
+            <button onClick={openCreateModal} className="grimoire-btn grimoire-btn-primary">
+              <Plus size={16} /> Crea Primo NPC
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+          {filteredNpcs.map(npc => (
           <div key={npc.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
               <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '14px' }}>
@@ -279,6 +429,7 @@ export const NpcsTab: React.FC = () => {
           </div>
         ))}
       </div>
+      )}
 
       {/* Create / Edit NPC Modal */}
       {(showAddModal || editingNpc) && (

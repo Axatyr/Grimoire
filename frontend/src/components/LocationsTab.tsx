@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useCampaign } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
-import { Map, Plus, MapPin, Trash2, Edit2, X, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Map, Plus, MapPin, Trash2, Edit2, X, Eye, EyeOff, AlertTriangle, Search, RotateCcw } from 'lucide-react';
 import { CustomPropertiesEditor, CustomPropertiesView, type CustomProperty } from './CustomPropertiesEditor';
 
 interface Location {
@@ -29,6 +29,11 @@ export const LocationsTab: React.FC = () => {
 
   // Delete confirmation modal state
   const [deleteConfirmLocation, setDeleteConfirmLocation] = useState<Location | null>(null);
+
+  // Wiki Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterHierarchy, setFilterHierarchy] = useState<'ALL' | 'ROOT' | 'SUB'>('ALL');
+  const [filterVisibility, setFilterVisibility] = useState('ALL');
 
   // Form state
   const [name, setName] = useState('');
@@ -148,11 +153,37 @@ export const LocationsTab: React.FC = () => {
     }
   };
 
+  const filteredLocations = locations.filter(loc => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchName = loc.name.toLowerCase().includes(q);
+      const matchDesc = loc.description?.toLowerCase().includes(q);
+      const matchParent = loc.parent?.name?.toLowerCase().includes(q);
+      const matchChildren = loc.children?.some(c => c.name.toLowerCase().includes(q));
+      const matchNpcs = loc.npcs?.some(n => n.name.toLowerCase().includes(q));
+      if (!matchName && !matchDesc && !matchParent && !matchChildren && !matchNpcs) return false;
+    }
+
+    if (filterHierarchy === 'ROOT' && loc.parentId) return false;
+    if (filterHierarchy === 'SUB' && !loc.parentId) return false;
+
+    if (filterVisibility !== 'ALL' && loc.visibility !== filterVisibility) return false;
+
+    return true;
+  });
+
+  const isLocFiltered = searchQuery.trim() !== '' || filterHierarchy !== 'ALL' || filterVisibility !== 'ALL';
+  const resetLocFilters = () => {
+    setSearchQuery('');
+    setFilterHierarchy('ALL');
+    setFilterVisibility('ALL');
+  };
+
   if (!activeCampaign) return null;
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Map color="var(--accent-cyan)" /> Atlante del Mondo & Mappe
@@ -169,8 +200,109 @@ export const LocationsTab: React.FC = () => {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-        {locations.map(loc => (
+      {/* Wiki Search & Filter Toolbar */}
+      <div className="glass-panel" style={{
+        padding: '14px 18px',
+        marginBottom: '22px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '12px',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', flex: 1 }}>
+          {/* Text Search */}
+          <div style={{ position: 'relative', minWidth: '240px', flex: '1 1 240px' }}>
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              className="grimoire-input"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Cerca luogo per nome, descrizione, PNG o sotto-aree..."
+              style={{ paddingLeft: '36px', paddingRight: searchQuery ? '32px' : '12px', height: '38px', fontSize: '0.85rem' }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* Hierarchy Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Gerarchia:</span>
+            <select
+              className="grimoire-select"
+              value={filterHierarchy}
+              onChange={e => setFilterHierarchy(e.target.value as any)}
+              style={{ height: '38px', fontSize: '0.82rem', minWidth: '130px' }}
+            >
+              <option value="ALL">Tutti i Luoghi</option>
+              <option value="ROOT">Solo Macro-Aree / Regioni</option>
+              <option value="SUB">Solo Sotto-Aree / Stanze</option>
+            </select>
+          </div>
+
+          {/* Visibility Filter (Master Only) */}
+          {isMaster && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Visibilità:</span>
+              <select
+                className="grimoire-select"
+                value={filterVisibility}
+                onChange={e => setFilterVisibility(e.target.value)}
+                style={{ height: '38px', fontSize: '0.82rem', minWidth: '120px' }}
+              >
+                <option value="ALL">Tutti</option>
+                <option value="PUBLIC_PLAYERS">Pubblici (Player)</option>
+                <option value="PRIVATE_MASTER">Privati (Solo DM)</option>
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Results Info & Reset */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            <strong>{filteredLocations.length}</strong> {filteredLocations.length === 1 ? 'luogo' : 'luoghi'}
+          </span>
+          {isLocFiltered && (
+            <button
+              onClick={resetLocFilters}
+              className="grimoire-btn grimoire-btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem', gap: '6px' }}
+            >
+              <RotateCcw size={13} /> Azzera Filtri
+            </button>
+          )}
+        </div>
+      </div>
+
+      {filteredLocations.length === 0 ? (
+        <div className="glass-panel" style={{ padding: '50px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <MapPin size={40} style={{ margin: '0 auto 12px auto', opacity: 0.4 }} />
+          <h3 style={{ color: '#fff', marginBottom: '8px' }}>Nessun luogo trovato</h3>
+          <p style={{ fontSize: '0.9rem', marginBottom: '16px' }}>
+            {isLocFiltered
+              ? 'Nessun luogo corrisponde ai criteri di ricerca o ai filtri impostati.'
+              : 'L\'atlante è attualmente vuoto.'}
+          </p>
+          {isLocFiltered ? (
+            <button onClick={resetLocFilters} className="grimoire-btn grimoire-btn-secondary">
+              <RotateCcw size={14} /> Mostra Tutti i Luoghi
+            </button>
+          ) : isMaster ? (
+            <button onClick={openCreateModal} className="grimoire-btn grimoire-btn-primary">
+              <Plus size={16} /> Crea Primo Luogo
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+          {filteredLocations.map(loc => (
           <div key={loc.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
               {loc.mapImageUrl && (
@@ -276,6 +408,7 @@ export const LocationsTab: React.FC = () => {
           </div>
         ))}
       </div>
+      )}
 
       {/* Create / Edit Location Modal */}
       {(showAddModal || editingLocation) && (

@@ -16,7 +16,9 @@ import {
   EyeOff,
   Package,
   Shield,
-  Layers
+  Layers,
+  Search,
+  RotateCcw
 } from 'lucide-react';
 import { CustomPropertiesEditor, CustomPropertiesView, type CustomProperty } from './CustomPropertiesEditor';
 
@@ -51,6 +53,11 @@ export const InventoryTab: React.FC = () => {
   // Section view filter: 'PARTY_INV' | 'PARTY_LOOT' | 'DM_STASH'
   const [activeSection, setActiveSection] = useState<'PARTY_INV' | 'PARTY_LOOT' | 'DM_STASH'>('PARTY_LOOT');
   const [selectedCharacterFilter, setSelectedCharacterFilter] = useState<string>('ALL');
+
+  // Wiki Search & Filters
+  const [itemSearch, setItemSearch] = useState('');
+  const [rarityFilter, setRarityFilter] = useState('ALL');
+  const [typeFilter, setTypeFilter] = useState('ALL');
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
@@ -278,14 +285,39 @@ export const InventoryTab: React.FC = () => {
 
   if (!activeCampaign) return null;
 
-  // Split items into categories
+  // Split items into categories with search & filter support
+  const filterItem = (item: Item) => {
+    if (itemSearch.trim()) {
+      const q = itemSearch.toLowerCase();
+      const matchName = item.name.toLowerCase().includes(q);
+      const matchDesc = item.description?.toLowerCase().includes(q);
+      const matchGroup = item.lootGroup?.toLowerCase().includes(q);
+      const matchType = item.type?.toLowerCase().includes(q);
+      if (!matchName && !matchDesc && !matchGroup && !matchType) return false;
+    }
+    if (rarityFilter !== 'ALL' && item.rarity !== rarityFilter) return false;
+    if (typeFilter !== 'ALL' && item.type !== typeFilter) return false;
+    return true;
+  };
+
+  const isItemFiltered = itemSearch.trim() !== '' || rarityFilter !== 'ALL' || typeFilter !== 'ALL';
+  const resetItemFilters = () => {
+    setItemSearch('');
+    setRarityFilter('ALL');
+    setTypeFilter('ALL');
+  };
+
   const dmStashItems = items.filter(i => i.visibility === 'PRIVATE_MASTER');
   const partyLootItems = items.filter(i => i.visibility === 'PUBLIC_PLAYERS' && !i.assignedCharacterId);
   const partyInventoryItems = items.filter(i => i.assignedCharacterId);
 
+  const displayedDmStashItems = dmStashItems.filter(filterItem);
+  const displayedPartyLootItems = partyLootItems.filter(filterItem);
+  const displayedPartyInventoryItems = partyInventoryItems.filter(filterItem);
+
   // Group DM Stash by lootGroup
   const dmStashGroups: Record<string, Item[]> = {};
-  dmStashItems.forEach(item => {
+  displayedDmStashItems.forEach(item => {
     const grp = item.lootGroup?.trim() || 'Bottino Senza Nome';
     if (!dmStashGroups[grp]) dmStashGroups[grp] = [];
     dmStashGroups[grp].push(item);
@@ -369,18 +401,108 @@ export const InventoryTab: React.FC = () => {
         )}
       </div>
 
+      {/* Wiki Search & Filter Toolbar for Items */}
+      <div className="glass-panel" style={{
+        padding: '12px 18px',
+        marginBottom: '22px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '12px',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', flex: 1 }}>
+          <div style={{ position: 'relative', minWidth: '240px', flex: '1 1 240px' }}>
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              className="grimoire-input"
+              value={itemSearch}
+              onChange={e => setItemSearch(e.target.value)}
+              placeholder="Cerca oggetto per nome, descrizione, forziere..."
+              style={{ paddingLeft: '36px', paddingRight: itemSearch ? '32px' : '12px', height: '38px', fontSize: '0.85rem' }}
+            />
+            {itemSearch && (
+              <button
+                onClick={() => setItemSearch('')}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Rarità:</span>
+            <select
+              className="grimoire-select"
+              value={rarityFilter}
+              onChange={e => setRarityFilter(e.target.value)}
+              style={{ height: '38px', fontSize: '0.82rem', minWidth: '120px' }}
+            >
+              <option value="ALL">Tutte le Rarità</option>
+              <option value="Common">Comune (Common)</option>
+              <option value="Uncommon">Non Comune (Uncommon)</option>
+              <option value="Rare">Raro (Rare)</option>
+              <option value="Very Rare">Molto Raro (Very Rare)</option>
+              <option value="Legendary">Leggendario (Legendary)</option>
+              <option value="Artifact">Artefatto (Artifact)</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tipo:</span>
+            <select
+              className="grimoire-select"
+              value={typeFilter}
+              onChange={e => setTypeFilter(e.target.value)}
+              style={{ height: '38px', fontSize: '0.82rem', minWidth: '120px' }}
+            >
+              <option value="ALL">Tutti i Tipi</option>
+              <option value="Arma">Arma</option>
+              <option value="Armatura">Armatura</option>
+              <option value="Pozione">Pozione</option>
+              <option value="Pergamena">Pergamena</option>
+              <option value="Strumento">Strumento</option>
+              <option value="Anello">Anello</option>
+              <option value="Bacchetta">Bacchetta</option>
+              <option value="Tesoro">Tesoro</option>
+              <option value="Altro">Altro</option>
+            </select>
+          </div>
+        </div>
+
+        {isItemFiltered && (
+          <button
+            onClick={resetItemFilters}
+            className="grimoire-btn grimoire-btn-secondary"
+            style={{ padding: '6px 12px', fontSize: '0.8rem', gap: '6px' }}
+          >
+            <RotateCcw size={13} /> Azzera Filtri
+          </button>
+        )}
+      </div>
+
       {/* SECTION 1: PARTY LOOT (Bottino Libero) */}
       {activeSection === 'PARTY_LOOT' && (
         <div>
-          {partyLootItems.length === 0 ? (
+          {displayedPartyLootItems.length === 0 ? (
             <div className="glass-panel" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
               <Package size={40} style={{ opacity: 0.4, marginBottom: '10px' }} />
-              <p style={{ fontSize: '1.1rem' }}>Nessun bottino libero nel forziere comune.</p>
-              <p style={{ fontSize: '0.85rem' }}>Gli oggetti non assegnati e visibili ai giocatori appariranno qui.</p>
+              <p style={{ fontSize: '1.1rem' }}>
+                {isItemFiltered ? 'Nessun oggetto trovato con i filtri selezionati.' : 'Nessun bottino libero nel forziere comune.'}
+              </p>
+              <p style={{ fontSize: '0.85rem' }}>
+                {isItemFiltered ? 'Prova a modificare i termini di ricerca o la rarità.' : 'Gli oggetti non assegnati e visibili ai giocatori appariranno qui.'}
+              </p>
+              {isItemFiltered && (
+                <button onClick={resetItemFilters} className="grimoire-btn grimoire-btn-secondary" style={{ marginTop: '12px' }}>
+                  <RotateCcw size={14} /> Mostra Tutto il Bottino
+                </button>
+              )}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-              {partyLootItems.map(item => (
+              {displayedPartyLootItems.map(item => (
                 <ItemCard
                   key={item.id}
                   item={item}
@@ -410,33 +532,42 @@ export const InventoryTab: React.FC = () => {
               value={selectedCharacterFilter}
               onChange={e => setSelectedCharacterFilter(e.target.value)}
             >
-              <option value="ALL">Tutti gli eroi ({partyInventoryItems.length} oggetti)</option>
+              <option value="ALL">Tutti gli eroi ({displayedPartyInventoryItems.length} oggetti)</option>
               {characters.map(c => (
                 <option key={c.id} value={c.id}>
-                  👤 {c.name} ({partyInventoryItems.filter(i => i.assignedCharacterId === c.id).length})
+                  👤 {c.name} ({displayedPartyInventoryItems.filter(i => i.assignedCharacterId === c.id).length})
                 </option>
               ))}
             </select>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-            {partyInventoryItems
-              .filter(i => selectedCharacterFilter === 'ALL' || i.assignedCharacterId === selectedCharacterFilter)
-              .map(item => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  isMaster={isMaster}
-                  onTransfer={() => {
-                    setTransferModalItem(item);
-                    setTargetCharId(item.assignedCharacterId || '');
-                  }}
-                  onEdit={() => openEditModal(item)}
-                  onDelete={() => handleDeleteItem(item.id)}
-                  onToggleVisibility={() => handleToggleVisibility(item)}
-                />
-              ))}
-          </div>
+          {displayedPartyInventoryItems.length === 0 ? (
+            <div className="glass-panel" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <Package size={40} style={{ opacity: 0.4, marginBottom: '10px' }} />
+              <p style={{ fontSize: '1.1rem' }}>
+                {isItemFiltered ? 'Nessun oggetto trovato per l\'eroe o i criteri selezionati.' : 'Nessun oggetto assegnato agli eroi.'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+              {displayedPartyInventoryItems
+                .filter(i => selectedCharacterFilter === 'ALL' || i.assignedCharacterId === selectedCharacterFilter)
+                .map(item => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    isMaster={isMaster}
+                    onTransfer={() => {
+                      setTransferModalItem(item);
+                      setTargetCharId(item.assignedCharacterId || '');
+                    }}
+                    onEdit={() => openEditModal(item)}
+                    onDelete={() => handleDeleteItem(item.id)}
+                    onToggleVisibility={() => handleToggleVisibility(item)}
+                  />
+                ))}
+            </div>
+          )}
         </div>
       )}
 

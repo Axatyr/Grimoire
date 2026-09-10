@@ -1,12 +1,12 @@
 
 Sprint 1:
-- I nodi collegati spariscono dalla prima vista principale e in quella innestata devono poter essere selezionabili ed espandibili
-- Aggiungere stato in progression per story path
+
 
 
 Backlog:
 - Gestire meglio l'atlante e implementare un caricamento della mappa dove pinnare i posti (interattiva)
-- Espandere le card e vedere più dettagli
+
+- ampliare le schede per visualizzare piu' dettagli
 - Valutare story path anche per personaggio e non solo per campagna (questo può intrecciarsi con la campagna)
 - Visualizzazione rapida dei personaggi e del bestiario (a destra?)
 - Tab mappa per muoversi es dungeon
@@ -25,6 +25,3 @@ Backlog:
 - Tab informazioni wiki (regole, statistiche eccc) vademecum
 - Ancora meglio, creare ACL per gestire gli oggetti a livello wiki
 - In automatico quando aggiungi una bestia si aggiunge anche alla campagna
-- Aggiungere cerca e filtro nella wiki
-
-- Prova

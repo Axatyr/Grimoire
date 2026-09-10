@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useCampaign } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
-import { Plus, Sparkles, Trash2, Skull, Edit2, X, Eye, EyeOff } from 'lucide-react';
+import { Plus, Sparkles, Trash2, Skull, Edit2, X, Eye, EyeOff, Search, RotateCcw } from 'lucide-react';
 import { CustomPropertiesEditor, CustomPropertiesView, type CustomProperty } from './CustomPropertiesEditor';
 import { ShareModal } from './ShareModal';
 
@@ -28,6 +28,12 @@ export const MonstersTab: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingMonster, setEditingMonster] = useState<Monster | null>(null);
   const [sharingMonster, setSharingMonster] = useState<Monster | null>(null);
+
+  // Wiki Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCr, setFilterCr] = useState('ALL');
+  const [filterType, setFilterType] = useState('ALL');
+  const [filterVisibility, setFilterVisibility] = useState('ALL');
 
   // Form state
   const [name, setName] = useState('');
@@ -149,11 +155,50 @@ export const MonstersTab: React.FC = () => {
     }
   };
 
+  const availableTypes = Array.from(new Set([
+    'Bestia', 'Non Morto', 'Drago', 'Umanoide', 'Aberrazione', 'Costrutto',
+    'Elementale', 'Fata', 'Immondo', 'Gigante', 'Mostruosità', 'Pianta',
+    ...monsters.map(m => m.type).filter(Boolean) as string[]
+  ])).sort();
+
+  const filteredMonsters = monsters.filter(monster => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchName = monster.name.toLowerCase().includes(q);
+      const matchType = monster.type?.toLowerCase().includes(q);
+      const matchDesc = monster.description?.toLowerCase().includes(q);
+      if (!matchName && !matchType && !matchDesc) return false;
+    }
+
+    if (filterType !== 'ALL' && monster.type !== filterType) return false;
+
+    if (filterCr !== 'ALL') {
+      if (filterCr === '10+') {
+        const numCr = parseFloat(monster.cr || '0');
+        if (isNaN(numCr) || numCr < 10) return false;
+      } else if (monster.cr !== filterCr) {
+        return false;
+      }
+    }
+
+    if (filterVisibility !== 'ALL' && monster.visibility !== filterVisibility) return false;
+
+    return true;
+  });
+
+  const isFiltered = searchQuery.trim() !== '' || filterCr !== 'ALL' || filterType !== 'ALL' || filterVisibility !== 'ALL';
+  const resetFilters = () => {
+    setSearchQuery('');
+    setFilterCr('ALL');
+    setFilterType('ALL');
+    setFilterVisibility('ALL');
+  };
+
   if (!activeCampaign) return null;
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Skull color="var(--accent-crimson)" /> Bestiario & Creature
@@ -170,8 +215,137 @@ export const MonstersTab: React.FC = () => {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-        {monsters.map(monster => (
+      {/* Wiki Search & Filters Toolbar */}
+      <div className="glass-panel" style={{
+        padding: '14px 18px',
+        marginBottom: '22px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '12px',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', flex: 1 }}>
+          {/* Text Search */}
+          <div style={{ position: 'relative', minWidth: '240px', flex: '1 1 240px' }}>
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              className="grimoire-input"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Cerca mostro per nome, tipo o descrizione..."
+              style={{ paddingLeft: '36px', paddingRight: searchQuery ? '32px' : '12px', height: '38px', fontSize: '0.85rem' }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* CR Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Grado (CR):</span>
+            <select
+              className="grimoire-select"
+              value={filterCr}
+              onChange={e => setFilterCr(e.target.value)}
+              style={{ height: '38px', fontSize: '0.82rem', minWidth: '100px' }}
+            >
+              <option value="ALL">Tutti i CR</option>
+              <option value="0">CR 0</option>
+              <option value="1/8">CR 1/8</option>
+              <option value="1/4">CR 1/4</option>
+              <option value="1/2">CR 1/2</option>
+              <option value="1">CR 1</option>
+              <option value="2">CR 2</option>
+              <option value="3">CR 3</option>
+              <option value="4">CR 4</option>
+              <option value="5">CR 5</option>
+              <option value="6">CR 6</option>
+              <option value="7">CR 7</option>
+              <option value="8">CR 8</option>
+              <option value="9">CR 9</option>
+              <option value="10+">CR 10+</option>
+            </select>
+          </div>
+
+          {/* Monster Type Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Tipo:</span>
+            <select
+              className="grimoire-select"
+              value={filterType}
+              onChange={e => setFilterType(e.target.value)}
+              style={{ height: '38px', fontSize: '0.82rem', minWidth: '130px' }}
+            >
+              <option value="ALL">Tutti i Tipi</option>
+              {availableTypes.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Visibility Filter (Master Only) */}
+          {isMaster && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Visibilità:</span>
+              <select
+                className="grimoire-select"
+                value={filterVisibility}
+                onChange={e => setFilterVisibility(e.target.value)}
+                style={{ height: '38px', fontSize: '0.82rem', minWidth: '120px' }}
+              >
+                <option value="ALL">Tutti</option>
+                <option value="PUBLIC_PLAYERS">Pubblici (Player)</option>
+                <option value="PRIVATE_MASTER">Privati (Solo DM)</option>
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Results Info & Reset */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            <strong>{filteredMonsters.length}</strong> {filteredMonsters.length === 1 ? 'creatura' : 'creature'}
+          </span>
+          {isFiltered && (
+            <button
+              onClick={resetFilters}
+              className="grimoire-btn grimoire-btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem', gap: '6px' }}
+            >
+              <RotateCcw size={13} /> Azzera Filtri
+            </button>
+          )}
+        </div>
+      </div>
+
+      {filteredMonsters.length === 0 ? (
+        <div className="glass-panel" style={{ padding: '50px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <Skull size={40} style={{ margin: '0 auto 12px auto', opacity: 0.4 }} />
+          <h3 style={{ color: '#fff', marginBottom: '8px' }}>Nessuna creatura trovata</h3>
+          <p style={{ fontSize: '0.9rem', marginBottom: '16px' }}>
+            {isFiltered
+              ? 'Nessun mostro corrisponde ai criteri di ricerca o ai filtri impostati.'
+              : 'Il bestiario è attualmente vuoto.'}
+          </p>
+          {isFiltered ? (
+            <button onClick={resetFilters} className="grimoire-btn grimoire-btn-secondary">
+              <RotateCcw size={14} /> Mostra Tutte le Creature
+            </button>
+          ) : isMaster ? (
+            <button onClick={openCreateModal} className="grimoire-btn grimoire-btn-primary">
+              <Plus size={16} /> Aggiungi Primo Mostro
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+          {filteredMonsters.map(monster => (
           <div key={monster.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
               {monster.imageUrl && (
@@ -250,6 +424,7 @@ export const MonstersTab: React.FC = () => {
           </div>
         ))}
       </div>
+      )}
 
       {/* Share Modal */}
       {sharingMonster && (

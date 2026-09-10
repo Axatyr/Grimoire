@@ -24,6 +24,10 @@ import {
   Users,
   Compass,
   CornerDownRight,
+  Search,
+  Activity,
+  Flame,
+  Filter,
   X
 } from 'lucide-react';
 import { ShareModal } from './ShareModal';
@@ -102,6 +106,10 @@ export const StoryTree: React.FC = () => {
 
   // Session Recap Modal
   const [recapModal, setRecapModal] = useState<string | null>(null);
+
+  // Story Progression & Search Filters
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'IN_PROGRESS' | 'REACHED' | 'PLANNED' | 'SKIPPED'>('ALL');
+  const [nodeSearch, setNodeSearch] = useState('');
 
   const fetchGraph = async () => {
     if (!activeCampaign) return;
@@ -379,6 +387,34 @@ export const StoryTree: React.FC = () => {
     }
   };
 
+  // Story Path Progression Calculations
+  const inProgressNodes = nodes.filter(n => n.status === 'IN_PROGRESS');
+  const activeInProgressNode = inProgressNodes[0] || null;
+  const reachedCount = nodes.filter(n => n.status === 'REACHED' || n.status === 'ALTERED').length;
+  const inProgressCount = inProgressNodes.length;
+  const plannedCount = nodes.filter(n => n.status === 'PLANNED').length;
+  const skippedCount = nodes.filter(n => n.status === 'SKIPPED').length;
+  const totalNodesCount = nodes.length;
+  const progressPercent = totalNodesCount > 0 ? Math.round((reachedCount / totalNodesCount) * 100) : 0;
+
+  // Filtered nodes logic
+  const isFilteringActive = statusFilter !== 'ALL' || nodeSearch.trim() !== '';
+  const filteredNodes = nodes.filter(node => {
+    if (statusFilter === 'IN_PROGRESS' && node.status !== 'IN_PROGRESS') return false;
+    if (statusFilter === 'REACHED' && node.status !== 'REACHED' && node.status !== 'ALTERED') return false;
+    if (statusFilter === 'PLANNED' && node.status !== 'PLANNED') return false;
+    if (statusFilter === 'SKIPPED' && node.status !== 'SKIPPED') return false;
+    if (nodeSearch.trim()) {
+      const q = nodeSearch.toLowerCase();
+      const matchTitle = node.title.toLowerCase().includes(q);
+      const matchSummary = node.summary?.toLowerCase().includes(q);
+      const matchContent = node.content?.toLowerCase().includes(q);
+      const matchLinks = node.links?.some(l => l.entityName?.toLowerCase().includes(q));
+      if (!matchTitle && !matchSummary && !matchContent && !matchLinks) return false;
+    }
+    return true;
+  });
+
   // Find Root Nodes: Nodes that have no incoming edges from any other node currently visible
   const incomingTargetNodeIds = new Set(edges.map(e => e.toNodeId));
   const rootNodes = nodes.filter(n => !incomingTargetNodeIds.has(n.id));
@@ -405,8 +441,10 @@ export const StoryTree: React.FC = () => {
           style={{
             padding: depth > 0 ? '14px 16px' : '18px 20px',
             cursor: 'pointer',
-            borderColor: isSelected ? 'var(--border-glow)' : undefined,
-            boxShadow: isSelected ? '0 0 20px rgba(139, 92, 246, 0.25)' : undefined,
+            borderColor: isSelected ? 'var(--border-glow)' : node.status === 'IN_PROGRESS' ? 'rgba(6, 182, 212, 0.4)' : undefined,
+            boxShadow: node.status === 'IN_PROGRESS'
+              ? (isSelected ? '0 0 24px rgba(6, 182, 212, 0.5)' : '0 0 16px rgba(6, 182, 212, 0.25)')
+              : (isSelected ? '0 0 20px rgba(139, 92, 246, 0.25)' : undefined),
             borderLeft: `4px solid ${
               node.status === 'IN_PROGRESS' ? 'var(--accent-cyan)' :
               node.status === 'REACHED' ? 'var(--accent-emerald)' :
@@ -436,7 +474,7 @@ export const StoryTree: React.FC = () => {
           )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {hasChildren && (
                 <button
                   type="button"
@@ -458,6 +496,24 @@ export const StoryTree: React.FC = () => {
               <h4 style={{ fontSize: depth > 0 ? '1.05rem' : '1.15rem', color: '#fff' }}>
                 {node.title}
               </h4>
+              {node.status === 'IN_PROGRESS' && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  color: '#67e8f9',
+                  background: 'rgba(6, 182, 212, 0.15)',
+                  border: '1px solid rgba(6, 182, 212, 0.4)',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  letterSpacing: '0.5px'
+                }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#06b6d4', boxShadow: '0 0 6px #06b6d4' }} />
+                  IN CORSO
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               {getStatusBadge(node.status)}
@@ -630,6 +686,223 @@ export const StoryTree: React.FC = () => {
         </div>
       )}
 
+      {/* 1. Story Path Progression Bar & Metrics */}
+      {nodes.length > 0 && (
+        <div className="glass-panel" style={{
+          padding: '16px 20px',
+          marginBottom: '20px',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(11, 15, 25, 0.95))',
+          border: '1px solid var(--border-subtle)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Flame size={20} color="var(--accent-gold)" />
+              <div>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Avanzamento Story Path
+                </span>
+                <span style={{ marginLeft: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {reachedCount} di {totalNodesCount} nodi completati ({progressPercent}%)
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Metrics Badges */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="badge" style={{ background: 'rgba(6, 182, 212, 0.15)', color: '#67e8f9', border: '1px solid rgba(6, 182, 212, 0.4)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <Activity size={12} /> {inProgressCount} in corso
+              </span>
+              <span className="badge badge-rarity-uncommon" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <CheckCircle2 size={12} /> {reachedCount} raggiunti
+              </span>
+              {isMaster && (
+                <>
+                  <span className="badge badge-rarity-very-rare" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    <HelpCircle size={12} /> {plannedCount} pianificati
+                  </span>
+                  {skippedCount > 0 && (
+                    <span className="badge" style={{ background: 'rgba(255, 255, 255, 0.08)', color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <SkipForward size={12} /> {skippedCount} saltati
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Multi-segment Progress Bar */}
+          <div style={{
+            height: '8px',
+            width: '100%',
+            background: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: '4px',
+            overflow: 'hidden',
+            display: 'flex'
+          }}>
+            <div
+              title={`Raggiunti: ${reachedCount}`}
+              style={{
+                width: `${totalNodesCount > 0 ? (reachedCount / totalNodesCount) * 100 : 0}%`,
+                background: 'linear-gradient(90deg, #10b981, #059669)',
+                transition: 'width 0.4s ease'
+              }}
+            />
+            <div
+              title={`In Corso: ${inProgressCount}`}
+              style={{
+                width: `${totalNodesCount > 0 ? (inProgressCount / totalNodesCount) * 100 : 0}%`,
+                background: 'linear-gradient(90deg, #06b6d4, #0891b2)',
+                transition: 'width 0.4s ease'
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 2. Active Scene Banner (Prominent in-progress focal point) */}
+      {activeInProgressNode && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(15, 23, 42, 0.9))',
+          border: '1px solid rgba(6, 182, 212, 0.4)',
+          boxShadow: '0 0 20px rgba(6, 182, 212, 0.15)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '14px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              background: 'rgba(6, 182, 212, 0.2)',
+              border: '1px solid #06b6d4',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#22d3ee',
+              flexShrink: 0
+            }}>
+              <PlayCircle size={22} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#67e8f9', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Scena Attualmente in Corso:
+                </span>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#06b6d4', boxShadow: '0 0 6px #06b6d4' }} />
+              </div>
+              <h3 style={{ fontSize: '1.2rem', color: '#fff', margin: '2px 0 0 0' }}>
+                {activeInProgressNode.title}
+              </h3>
+              {activeInProgressNode.summary && (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '2px 0 0 0' }}>
+                  {activeInProgressNode.summary}
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setSelectedNode(activeInProgressNode)}
+            className="grimoire-btn grimoire-btn-primary"
+            style={{ padding: '8px 16px', background: 'var(--accent-cyan)', color: '#0f172a', fontWeight: 600, gap: '6px' }}
+          >
+            <Compass size={16} /> Ispeziona Scena
+          </button>
+        </div>
+      )}
+
+      {/* 3. Search & Status Filter Toolbar */}
+      {nodes.length > 0 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+          marginBottom: '20px',
+          background: 'rgba(255, 255, 255, 0.02)',
+          padding: '10px 14px',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid var(--border-subtle)'
+        }}>
+          {/* Status Filter Buttons */}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Filter size={14} /> Filtra:
+            </span>
+            <button
+              onClick={() => setStatusFilter('ALL')}
+              className={`grimoire-btn ${statusFilter === 'ALL' ? 'grimoire-btn-primary' : 'grimoire-btn-secondary'}`}
+              style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+            >
+              Tutti ({totalNodesCount})
+            </button>
+            <button
+              onClick={() => setStatusFilter('IN_PROGRESS')}
+              className={`grimoire-btn ${statusFilter === 'IN_PROGRESS' ? 'grimoire-btn-primary' : 'grimoire-btn-secondary'}`}
+              style={{
+                padding: '4px 10px',
+                fontSize: '0.8rem',
+                background: statusFilter === 'IN_PROGRESS' ? 'var(--accent-cyan)' : undefined,
+                color: statusFilter === 'IN_PROGRESS' ? '#0f172a' : undefined
+              }}
+            >
+              In Corso ({inProgressCount})
+            </button>
+            <button
+              onClick={() => setStatusFilter('REACHED')}
+              className={`grimoire-btn ${statusFilter === 'REACHED' ? 'grimoire-btn-gold' : 'grimoire-btn-secondary'}`}
+              style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+            >
+              Raggiunti ({reachedCount})
+            </button>
+            {isMaster && (
+              <>
+                <button
+                  onClick={() => setStatusFilter('PLANNED')}
+                  className={`grimoire-btn ${statusFilter === 'PLANNED' ? 'grimoire-btn-primary' : 'grimoire-btn-secondary'}`}
+                  style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+                >
+                  Pianificati ({plannedCount})
+                </button>
+                <button
+                  onClick={() => setStatusFilter('SKIPPED')}
+                  className={`grimoire-btn ${statusFilter === 'SKIPPED' ? 'grimoire-btn-primary' : 'grimoire-btn-secondary'}`}
+                  style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+                >
+                  Saltati ({skippedCount})
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Quick Node Search */}
+          <div style={{ position: 'relative', minWidth: '220px' }}>
+            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              className="grimoire-input"
+              value={nodeSearch}
+              onChange={e => setNodeSearch(e.target.value)}
+              placeholder="Cerca per titolo, sinossi..."
+              style={{ paddingLeft: '32px', paddingRight: nodeSearch ? '30px' : '10px', fontSize: '0.82rem', height: '34px' }}
+            />
+            {nodeSearch && (
+              <button
+                onClick={() => setNodeSearch('')}
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main Grid: Tree Column + Details Column */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.25fr) minmax(320px, 1fr)', gap: '24px' }}>
         {/* Left Column: Hierarchical Nested Story Tree */}
@@ -645,6 +918,29 @@ export const StoryTree: React.FC = () => {
                 <button onClick={openCreateNodeModal} className="grimoire-btn grimoire-btn-primary">
                   <Plus size={16} /> Crea Primo Nodo
                 </button>
+              )}
+            </div>
+          ) : isFilteringActive ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Risultati filtro: <strong>{filteredNodes.length}</strong> {filteredNodes.length === 1 ? 'nodo trovato' : 'nodi trovati'}
+                </span>
+                <button
+                  onClick={() => { setStatusFilter('ALL'); setNodeSearch(''); }}
+                  className="grimoire-btn grimoire-btn-secondary"
+                  style={{ padding: '3px 8px', fontSize: '0.75rem' }}
+                >
+                  Mostra Albero Completo
+                </button>
+              </div>
+              {filteredNodes.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Search size={32} style={{ margin: '0 auto 10px auto', opacity: 0.5 }} />
+                  <p>Nessun nodo corrisponde ai filtri selezionati.</p>
+                </div>
+              ) : (
+                filteredNodes.map(node => renderNestedNode(node, 0))
               )}
             </div>
           ) : (
