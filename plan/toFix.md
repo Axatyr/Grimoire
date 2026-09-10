@@ -26,3 +26,5 @@ Backlog:
 - Ancora meglio, creare ACL per gestire gli oggetti a livello wiki
 - In automatico quando aggiungi una bestia si aggiunge anche alla campagna
 - Aggiungere cerca e filtro nella wiki
+
+- Prova
