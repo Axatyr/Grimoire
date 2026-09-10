@@ -115,8 +115,8 @@ export const NotesTab: React.FC = () => {
   if (!activeCampaign) return null;
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+    <div className="grimoire-container">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <FileText color="var(--primary)" /> Note & Cronache di Sessione
@@ -131,7 +131,7 @@ export const NotesTab: React.FC = () => {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+      <div className="responsive-grid-cards">
         {notes.map(note => {
           const canEdit = isMaster || note.author?.id === user?.id;
 
@@ -220,18 +220,8 @@ export const NotesTab: React.FC = () => {
 
       {/* Create / Edit Note Modal */}
       {(showAddModal || editingNote) && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '540px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '540px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>
                 {editingNote ? 'Modifica Nota' : 'Nuova Nota di Campagna'}

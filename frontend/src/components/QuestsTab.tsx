@@ -150,8 +150,8 @@ export const QuestsTab: React.FC = () => {
   if (!activeCampaign) return null;
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+    <div className="grimoire-container">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Compass color="var(--accent-gold)" /> Quest & Obiettivi di Campagna
@@ -168,7 +168,7 @@ export const QuestsTab: React.FC = () => {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+      <div className="responsive-grid-cards">
         {quests.map(quest => (
           <div key={quest.id} className="glass-panel glass-panel-hover" style={{ padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
@@ -276,18 +276,8 @@ export const QuestsTab: React.FC = () => {
 
       {/* Create / Edit Quest Modal */}
       {(showAddModal || editingQuest) && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '520px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '520px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>
                 {editingQuest ? 'Modifica Quest' : 'Nuova Quest di Campagna'}
@@ -299,7 +289,7 @@ export const QuestsTab: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Titolo della Missione</label>
                 <input className="grimoire-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="es. Salvare il Fabbro rapito dai Goblin" required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Stato</label>
                   <select className="grimoire-select" value={status} onChange={e => setStatus(e.target.value as any)}>

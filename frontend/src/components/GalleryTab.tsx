@@ -104,8 +104,8 @@ export const GalleryTab: React.FC = () => {
   if (!activeCampaign) return null;
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+    <div className="grimoire-container">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <ImageIcon color="var(--primary)" /> Grimorio Visivo & Handouts
@@ -122,7 +122,7 @@ export const GalleryTab: React.FC = () => {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+      <div className="responsive-grid-cards">
         {images.map(img => {
           const displayUrl = img.url.startsWith('http') ? img.url : `${BACKEND_URL}${img.url}`;
           return (
@@ -180,24 +180,14 @@ export const GalleryTab: React.FC = () => {
 
       {/* Add Image Modal */}
       {showAddModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '480px', width: '100%', padding: '28px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '480px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>Aggiungi Immagine al Grimorio</h3>
               <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={20} /></button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '18px' }}>
+            <div className="responsive-form-row-2" style={{ marginBottom: '18px' }}>
               <button
                 type="button"
                 onClick={() => setMode('LINK')}

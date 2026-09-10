@@ -324,7 +324,7 @@ export const InventoryTab: React.FC = () => {
   });
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="grimoire-container">
       {/* Header */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
         <div>
@@ -346,13 +346,17 @@ export const InventoryTab: React.FC = () => {
       </div>
 
       {/* 3 Sections Tabs Bar */}
-      <div style={{
-        display: 'flex',
-        gap: '10px',
-        borderBottom: '1px solid var(--border-subtle)',
-        paddingBottom: '12px',
-        marginBottom: '24px'
-      }}>
+      <div
+        className="hide-scrollbar touch-scroll"
+        style={{
+          display: 'flex',
+          gap: '8px',
+          overflowX: 'auto',
+          borderBottom: '1px solid var(--border-subtle)',
+          paddingBottom: '12px',
+          marginBottom: '20px'
+        }}
+      >
         <button
           onClick={() => setActiveSection('PARTY_LOOT')}
           className="grimoire-btn"
@@ -361,8 +365,10 @@ export const InventoryTab: React.FC = () => {
             border: activeSection === 'PARTY_LOOT' ? '1px solid var(--accent-gold)' : '1px solid var(--border-subtle)',
             color: activeSection === 'PARTY_LOOT' ? 'var(--accent-gold)' : 'var(--text-muted)',
             fontWeight: activeSection === 'PARTY_LOOT' ? 600 : 400,
-            fontSize: '0.9rem',
-            padding: '8px 16px'
+            fontSize: '0.85rem',
+            padding: '8px 14px',
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           <Package size={16} /> Bottino Rivelato ({partyLootItems.length})
@@ -376,8 +382,10 @@ export const InventoryTab: React.FC = () => {
             border: activeSection === 'PARTY_INV' ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
             color: activeSection === 'PARTY_INV' ? '#c4b5fd' : 'var(--text-muted)',
             fontWeight: activeSection === 'PARTY_INV' ? 600 : 400,
-            fontSize: '0.9rem',
-            padding: '8px 16px'
+            fontSize: '0.85rem',
+            padding: '8px 14px',
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           <Shield size={16} /> Inventario Eroi ({partyInventoryItems.length})
@@ -392,27 +400,21 @@ export const InventoryTab: React.FC = () => {
               border: activeSection === 'DM_STASH' ? '1px solid var(--accent-crimson)' : '1px solid var(--border-subtle)',
               color: activeSection === 'DM_STASH' ? '#fca5a5' : 'var(--text-muted)',
               fontWeight: activeSection === 'DM_STASH' ? 600 : 400,
-              fontSize: '0.9rem',
-              padding: '8px 16px'
+              fontSize: '0.85rem',
+              padding: '8px 14px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
-            <Lock size={16} /> 🔒 Forziere del DM ({dmStashItems.length})
+            <Lock size={16} /> 🔒 Forziere DM ({dmStashItems.length})
           </button>
         )}
       </div>
 
       {/* Wiki Search & Filter Toolbar for Items */}
-      <div className="glass-panel" style={{
-        padding: '12px 18px',
-        marginBottom: '22px',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '12px',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', flex: 1 }}>
-          <div style={{ position: 'relative', minWidth: '240px', flex: '1 1 240px' }}>
+      <div className="glass-panel toolbar-responsive">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', flex: 1, width: '100%', minWidth: 0 }}>
+          <div style={{ position: 'relative', width: '100%', minWidth: 0 }}>
             <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               className="grimoire-input"
@@ -501,7 +503,7 @@ export const InventoryTab: React.FC = () => {
               )}
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+            <div className="responsive-grid-cards">
               {displayedPartyLootItems.map(item => (
                 <ItemCard
                   key={item.id}
@@ -549,7 +551,7 @@ export const InventoryTab: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+            <div className="responsive-grid-cards">
               {displayedPartyInventoryItems
                 .filter(i => selectedCharacterFilter === 'ALL' || i.assignedCharacterId === selectedCharacterFilter)
                 .map(item => (
@@ -610,7 +612,7 @@ export const InventoryTab: React.FC = () => {
                     </button>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                  <div className="responsive-grid-cards">
                     {groupItems.map(item => (
                       <ItemCard
                         key={item.id}
@@ -635,18 +637,8 @@ export const InventoryTab: React.FC = () => {
 
       {/* Modal: Create or Edit Item */}
       {(showAddModal || editingItem) && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '540px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '540px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>
                 {editingItem ? 'Modifica Oggetto' : 'Aggiungi Nuovo Oggetto'}
@@ -658,7 +650,7 @@ export const InventoryTab: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Nome Oggetto</label>
                 <input className="grimoire-input" value={name} onChange={e => setName(e.target.value)} placeholder="es. Spada Fiammeggiante +1" required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Rarità</label>
                   <select className="grimoire-select" value={rarity} onChange={e => setRarity(e.target.value)}>
@@ -675,7 +667,7 @@ export const InventoryTab: React.FC = () => {
                   <input className="grimoire-input" value={itemType} onChange={e => setItemType(e.target.value)} placeholder="Arma, Armatura, Pozione, Tesoro" />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Valore Monete</label>
                   <input className="grimoire-input" value={value} onChange={e => setValue(e.target.value)} placeholder="es. 150 mo" />
@@ -686,7 +678,7 @@ export const InventoryTab: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
                     Gruppo / Forziere (Loot Group)
@@ -744,18 +736,8 @@ export const InventoryTab: React.FC = () => {
 
       {/* Transfer Item Modal */}
       {transferModalItem && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '440px', width: '100%', padding: '26px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '440px' }}>
             <h3 style={{ color: '#fff', fontSize: '1.25rem', marginBottom: '8px' }}>
               Assegna o Passa "{transferModalItem.name}"
             </h3>

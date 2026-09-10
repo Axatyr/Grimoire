@@ -632,7 +632,7 @@ export const StoryTree: React.FC = () => {
   }
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="grimoire-container">
       {/* Header */}
       <div style={{
         display: 'flex',
@@ -817,19 +817,9 @@ export const StoryTree: React.FC = () => {
       )}
 
       {/* 3. Search & Status Filter Toolbar */}
+      {/* Filters Toolbar */}
       {nodes.length > 0 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-          marginBottom: '20px',
-          background: 'rgba(255, 255, 255, 0.02)',
-          padding: '10px 14px',
-          borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--border-subtle)'
-        }}>
+        <div className="toolbar-responsive">
           {/* Status Filter Buttons */}
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -882,7 +872,7 @@ export const StoryTree: React.FC = () => {
           </div>
 
           {/* Quick Node Search */}
-          <div style={{ position: 'relative', minWidth: '220px' }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '320px', minWidth: 0 }}>
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               className="grimoire-input"
@@ -904,7 +894,7 @@ export const StoryTree: React.FC = () => {
       )}
 
       {/* Main Grid: Tree Column + Details Column */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.25fr) minmax(320px, 1fr)', gap: '24px' }}>
+      <div className="story-main-layout">
         {/* Left Column: Hierarchical Nested Story Tree */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {nodes.length === 0 ? (
@@ -1155,18 +1145,8 @@ export const StoryTree: React.FC = () => {
 
       {/* Modal: Create / Edit Story Node with Link Picker */}
       {(showAddNode || editingNode) && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '600px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>
                 {editingNode
@@ -1212,7 +1192,7 @@ export const StoryTree: React.FC = () => {
                   required
                 />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
                     Stato Nodo
@@ -1261,7 +1241,7 @@ export const StoryTree: React.FC = () => {
                   Collega Entità o Quest a questo Nodo
                 </label>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr auto', gap: '8px', marginBottom: '10px' }}>
+                <div className="responsive-form-row-3" style={{ marginBottom: '10px' }}>
                   <select
                     className="grimoire-select"
                     value={selectedLinkType}
@@ -1348,18 +1328,8 @@ export const StoryTree: React.FC = () => {
 
       {/* Modal: Add Edge */}
       {showAddEdge && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '480px', width: '100%', padding: '28px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '480px' }}>
             <h3 style={{ color: '#fff', fontSize: '1.3rem', marginBottom: '18px' }}>Collega Bivio Narrativo</h3>
             <form onSubmit={handleCreateEdge} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
@@ -1431,18 +1401,8 @@ export const StoryTree: React.FC = () => {
 
       {/* Session Recap Modal */}
       {recapModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '650px', width: '100%', padding: '28px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '650px' }}>
             <h3 style={{ color: 'var(--accent-gold)', fontSize: '1.4rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Sparkles size={20} /> Riepilogo di Sessione Generato
             </h3>

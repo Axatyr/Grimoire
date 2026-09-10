@@ -60,25 +60,17 @@ export const Navbar: React.FC = () => {
 
   return (
     <header style={{
-      background: 'rgba(11, 15, 25, 0.9)',
+      background: 'rgba(11, 15, 25, 0.95)',
       backdropFilter: 'blur(16px)',
       borderBottom: '1px solid var(--border-subtle)',
       position: 'sticky',
       top: 0,
       zIndex: 50,
-      padding: '0 20px'
+      padding: '0 16px'
     }}>
-      <div style={{
-        maxWidth: '1440px',
-        margin: '0 auto',
-        height: '70px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '20px'
-      }}>
-        {/* Brand & Campaign Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div className="navbar-top-container">
+        {/* Brand & User (on mobile top row) */}
+        <div className="navbar-brand-section">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
               width: '36px',
@@ -88,95 +80,99 @@ export const Navbar: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 15px var(--primary-glow)'
+              boxShadow: '0 0 15px var(--primary-glow)',
+              flexShrink: 0
             }}>
               <BookOpen size={20} color="#fff" />
             </div>
-            <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', fontWeight: 700, color: '#fff', letterSpacing: '1px' }}>
+            <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 700, color: '#fff', letterSpacing: '1px' }}>
               GRIMOIRE
             </span>
           </div>
 
-          {/* Campaign dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <select
-              className="grimoire-select"
-              style={{ width: 'auto', minWidth: '180px', padding: '6px 12px', fontSize: '0.85rem' }}
-              value={activeCampaign?.id || ''}
-              onChange={(e) => {
-                const found = campaigns.find(c => c.id === e.target.value);
-                if (found) setActiveCampaign(found);
-              }}
-            >
-              {campaigns.length === 0 ? (
-                <option value="">Nessuna campagna attiva</option>
-              ) : (
-                campaigns.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.title} ({c.system})
-                  </option>
-                ))
-              )}
-            </select>
+          {/* User Controls visible on top right */}
+          <div className="navbar-user-section">
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.75rem',
+              color: 'var(--accent-emerald)',
+              background: 'rgba(16, 185, 129, 0.1)',
+              padding: '3px 8px',
+              borderRadius: '9999px',
+              border: '1px solid rgba(16, 185, 129, 0.2)'
+            }}>
+              <Radio size={11} className="glow-active" />
+              <span className="navbar-online-text">Online</span>
+            </div>
 
-            {isMaster && (
-              <button
-                onClick={() => setShowNewCampaign(true)}
-                className="grimoire-btn grimoire-btn-secondary"
-                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                title="Crea nuova campagna"
-              >
-                <Plus size={14} /> Nuova
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* User Info & Realtime Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '0.75rem',
-            color: 'var(--accent-emerald)',
-            background: 'rgba(16, 185, 129, 0.1)',
-            padding: '4px 10px',
-            borderRadius: '9999px',
-            border: '1px solid rgba(16, 185, 129, 0.2)'
-          }}>
-            <Radio size={12} className="glow-active" />
-            <span>Online</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className={`badge ${isMaster ? 'badge-master' : 'badge-player'}`}>
               {isMaster ? 'Master' : 'Player'}
             </span>
-            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
+
+            <span className="navbar-user-name" style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {user?.username}
             </span>
-          </div>
 
-          <button
-            onClick={logout}
-            className="grimoire-btn grimoire-btn-secondary"
-            style={{ padding: '6px 10px' }}
-            title="Esci"
+            <button
+              onClick={logout}
+              className="grimoire-btn grimoire-btn-secondary"
+              style={{ padding: '6px 8px' }}
+              title="Esci"
+            >
+              <LogOut size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Campaign dropdown & Action Controls */}
+        <div className="navbar-campaign-controls">
+          <select
+            className="grimoire-select"
+            style={{ width: 'auto', minWidth: '180px', padding: '6px 12px', fontSize: '0.85rem' }}
+            value={activeCampaign?.id || ''}
+            onChange={(e) => {
+              const found = campaigns.find(c => c.id === e.target.value);
+              if (found) setActiveCampaign(found);
+            }}
           >
-            <LogOut size={16} />
-          </button>
+            {campaigns.length === 0 ? (
+              <option value="">Nessuna campagna attiva</option>
+            ) : (
+              campaigns.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.title} ({c.system})
+                </option>
+              ))
+            )}
+          </select>
+
+          {isMaster && (
+            <button
+              onClick={() => setShowNewCampaign(true)}
+              className="grimoire-btn grimoire-btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem', whiteSpace: 'nowrap', flexShrink: 0 }}
+              title="Crea nuova campagna"
+            >
+              <Plus size={14} /> Nuova
+            </button>
+          )}
         </div>
       </div>
 
       {/* Navigation tabs */}
-      <div style={{
-        display: 'flex',
-        gap: '6px',
-        overflowX: 'auto',
-        padding: '8px 0 12px 0',
-        borderTop: '1px solid var(--border-subtle)',
-      }}>
+      <div
+        className="hide-scrollbar touch-scroll"
+        style={{
+          display: 'flex',
+          gap: '8px',
+          overflowX: 'auto',
+          margin: '0 -16px',
+          padding: '8px 16px 10px 16px',
+          borderTop: '1px solid var(--border-subtle)',
+        }}
+      >
         {navTabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -187,19 +183,22 @@ export const Navbar: React.FC = () => {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
+                gap: '7px',
+                padding: '8px 14px',
+                minHeight: '38px',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: '0.8rem',
+                fontSize: '0.85rem',
                 whiteSpace: 'nowrap',
                 fontWeight: isActive ? 600 : 400,
                 color: isActive ? '#fff' : 'var(--text-muted)',
-                background: isActive ? 'rgba(139, 92, 246, 0.25)' : 'rgba(255, 255, 255, 0.03)',
+                background: isActive ? 'rgba(139, 92, 246, 0.28)' : 'rgba(255, 255, 255, 0.03)',
                 border: isActive ? '1px solid var(--border-glow)' : '1px solid var(--border-subtle)',
                 cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'all 0.15s ease'
               }}
             >
-              <Icon size={14} color={isActive ? 'var(--accent-gold)' : 'currentColor'} />
+              <Icon size={15} color={isActive ? 'var(--accent-gold)' : 'currentColor'} />
               {tab.label}
             </button>
           );
@@ -208,18 +207,9 @@ export const Navbar: React.FC = () => {
 
       {/* Create Campaign Modal */}
       {showNewCampaign && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '460px', width: '100%', padding: '28px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '460px' }}>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>Crea Nuova Campagna</h3>
               <button onClick={() => setShowNewCampaign(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>

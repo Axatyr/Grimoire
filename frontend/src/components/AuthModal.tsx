@@ -47,21 +47,9 @@ export const AuthModal: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(5, 8, 15, 0.85)',
-      backdropFilter: 'blur(10px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px'
-    }}>
-      <div className="glass-panel animate-fade-in" style={{
+    <div className="modal-responsive-backdrop">
+      <div className="glass-panel modal-responsive-content animate-fade-in" style={{
         maxWidth: '440px',
-        width: '100%',
-        padding: '36px',
         border: '1px solid var(--border-glow)',
         boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px var(--primary-glow)'
       }}>
@@ -163,7 +151,7 @@ export const AuthModal: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({
               <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
                 Ruolo Principale
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <button
                   type="button"
                   onClick={() => setRole('MASTER')}

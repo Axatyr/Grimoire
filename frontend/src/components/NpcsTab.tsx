@@ -196,7 +196,7 @@ export const NpcsTab: React.FC = () => {
   if (!activeCampaign) return null;
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="grimoire-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -215,18 +215,10 @@ export const NpcsTab: React.FC = () => {
       </div>
 
       {/* Wiki Search & Filter Toolbar */}
-      <div className="glass-panel" style={{
-        padding: '14px 18px',
-        marginBottom: '22px',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '12px',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', flex: 1 }}>
+      <div className="glass-panel toolbar-responsive">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', flex: 1, width: '100%', minWidth: 0 }}>
           {/* Text Search */}
-          <div style={{ position: 'relative', minWidth: '240px', flex: '1 1 240px' }}>
+          <div style={{ position: 'relative', width: '100%', minWidth: 0 }}>
             <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               className="grimoire-input"
@@ -332,7 +324,7 @@ export const NpcsTab: React.FC = () => {
           ) : null}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+        <div className="responsive-grid-cards">
           {filteredNpcs.map(npc => (
           <div key={npc.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
@@ -433,18 +425,8 @@ export const NpcsTab: React.FC = () => {
 
       {/* Create / Edit NPC Modal */}
       {(showAddModal || editingNpc) && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '520px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '520px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>
                 {editingNpc ? 'Modifica NPC' : 'Nuovo NPC'}
@@ -456,7 +438,7 @@ export const NpcsTab: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Nome NPC</label>
                 <input className="grimoire-input" value={name} onChange={e => setName(e.target.value)} placeholder="es. Gundren Rockseeker" required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Ruolo / Professione</label>
                   <input className="grimoire-input" value={role} onChange={e => setRole(e.target.value)} placeholder="Locandiere, Nobile, Spia" />
@@ -466,7 +448,7 @@ export const NpcsTab: React.FC = () => {
                   <input className="grimoire-input" value={faction} onChange={e => setFaction(e.target.value)} placeholder="Arpisti, Zhentarim..." />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Attitudine</label>
                   <select className="grimoire-select" value={attitude} onChange={e => setAttitude(e.target.value)}>
@@ -484,7 +466,7 @@ export const NpcsTab: React.FC = () => {
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>URL Ritratto</label>
                   <input className="grimoire-input" value={portraitUrl} onChange={e => setPortraitUrl(e.target.value)} placeholder="https://..." />

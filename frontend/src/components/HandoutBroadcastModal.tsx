@@ -12,23 +12,9 @@ export const HandoutBroadcastModal: React.FC = () => {
   const { type, payload, isPrivate, targetUsername, senderName } = liveHandout;
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(5, 8, 15, 0.85)',
-      backdropFilter: 'blur(12px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 2000,
-      padding: '20px'
-    }}>
-      <div className="glass-panel animate-fade-in" style={{
+    <div className="modal-responsive-backdrop">
+      <div className="glass-panel modal-responsive-content animate-fade-in" style={{
         maxWidth: '650px',
-        width: '100%',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        padding: '30px',
         border: isPrivate ? '2px solid var(--accent-crimson)' : '2px solid var(--accent-gold)',
         boxShadow: isPrivate
           ? '0 0 50px rgba(239, 68, 68, 0.3), 0 20px 40px rgba(0, 0, 0, 0.9)'

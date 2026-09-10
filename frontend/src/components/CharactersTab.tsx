@@ -268,7 +268,7 @@ export const CharactersTab: React.FC = () => {
   if (!activeCampaign) return null;
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="grimoire-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -286,26 +286,15 @@ export const CharactersTab: React.FC = () => {
       </div>
 
       {/* Characters Search & Count Toolbar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '12px',
-        marginBottom: '20px',
-        background: 'rgba(255, 255, 255, 0.02)',
-        padding: '10px 16px',
-        borderRadius: 'var(--radius-sm)',
-        border: '1px solid var(--border-subtle)'
-      }}>
-        <div style={{ position: 'relative', minWidth: '260px', flex: '1 1 260px' }}>
+      <div className="toolbar-responsive">
+        <div style={{ position: 'relative', width: '100%' }}>
           <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             className="grimoire-input"
             value={charSearch}
             onChange={e => setCharSearch(e.target.value)}
             placeholder="Cerca eroe per nome, razza, classe o giocatore..."
-            style={{ paddingLeft: '36px', paddingRight: charSearch ? '30px' : '10px', height: '36px', fontSize: '0.85rem' }}
+            style={{ paddingLeft: '36px', paddingRight: charSearch ? '30px' : '10px', height: '38px', fontSize: '0.9rem', width: '100%' }}
           />
           {charSearch && (
             <button
@@ -316,20 +305,20 @@ export const CharactersTab: React.FC = () => {
             </button>
           )}
         </div>
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
           <strong>{filteredCharacters.length}</strong> {filteredCharacters.length === 1 ? 'personaggio trovato' : 'personaggi trovati'}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+      <div className="responsive-grid-cards">
         {filteredCharacters.map(char => {
           const hpRatio = (char.hpCurrent / char.hpMax) * 100;
           const hpColor = hpRatio > 50 ? 'var(--accent-emerald)' : hpRatio > 25 ? 'var(--accent-gold)' : 'var(--accent-crimson)';
 
           return (
-            <div key={char.id} className="glass-panel glass-panel-hover" style={{ padding: '22px', position: 'relative' }}>
+            <div key={char.id} className="glass-panel glass-panel-hover" style={{ position: 'relative', overflow: 'hidden' }}>
               {/* Header card */}
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px', minWidth: 0 }}>
                 <div style={{
                   width: '54px',
                   height: '54px',
@@ -348,9 +337,9 @@ export const CharactersTab: React.FC = () => {
                     <span style={{ fontSize: '1.4rem' }}>🧙‍♂️</span>
                   )}
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ fontSize: '1.25rem', color: '#fff' }}>{char.name}</h3>
+                    <h3 style={{ fontSize: '1.25rem', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{char.name}</h3>
                     {isMaster && (
                       <button
                         onClick={() => handleToggleVisibility(char)}
@@ -396,7 +385,7 @@ export const CharactersTab: React.FC = () => {
               </div>
 
               {/* Stats & Armor Class */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+              <div className="responsive-form-row-2" style={{ gap: '8px', marginBottom: '16px' }}>
                 <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Shield size={16} color="var(--primary)" />
                   <div>
@@ -435,17 +424,17 @@ export const CharactersTab: React.FC = () => {
               </div>
 
               {/* Mini 6-Ability Scores Strip */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(6, 1fr)',
-                gap: '4px',
-                background: 'rgba(255, 255, 255, 0.02)',
-                padding: '6px 4px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-                marginBottom: '14px',
-                textAlign: 'center'
-              }}>
+              <div
+                className="dnd-stats-grid"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  padding: '8px 6px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-subtle)',
+                  marginBottom: '14px',
+                  textAlign: 'center'
+                }}
+              >
                 {[
                   { label: 'FOR', val: char.stats?.str ?? 10 },
                   { label: 'DES', val: char.stats?.dex ?? 10 },
@@ -504,18 +493,8 @@ export const CharactersTab: React.FC = () => {
 
       {/* Modal: Create or Edit Character */}
       {(showAddModal || editingCharacter) && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(5, 8, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '560px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px' }}>
+        <div className="modal-responsive-backdrop">
+          <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '560px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>
                 {editingCharacter ? 'Modifica Personaggio' : 'Crea Scheda Personaggio'}
@@ -529,7 +508,7 @@ export const CharactersTab: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Nome Personaggio</label>
                 <input className="grimoire-input" value={name} onChange={e => setName(e.target.value)} placeholder="es. Elidor delle Ombre" required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Razza</label>
                   <input className="grimoire-input" value={race} onChange={e => setRace(e.target.value)} placeholder="es. Elfo, Umano, Tiefling" />
@@ -557,7 +536,7 @@ export const CharactersTab: React.FC = () => {
                   <input type="number" min="1" className="grimoire-input" value={ac} onChange={e => setAc(Number(e.target.value))} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px' }}>
+              <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Avatar URL (opzionale)</label>
                   <input className="grimoire-input" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://..." />
@@ -580,7 +559,7 @@ export const CharactersTab: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
                   Caratteristiche & Modificatori
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', textAlign: 'center' }}>
+                <div className="dnd-stats-grid" style={{ textAlign: 'center' }}>
                   {[
                     { label: 'FOR', val: str, setter: setStr },
                     { label: 'DES', val: dex, setter: setDex },
@@ -643,25 +622,13 @@ export const CharactersTab: React.FC = () => {
       {/* MODALE SCHEDA DETTAGLIATA (EXPANDED CHARACTER SHEET) */}
       {selectedDetailChar && (
         <div
-          className="modal-overlay animate-fade-in"
-          style={{
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}
+          className="modal-responsive-backdrop animate-fade-in"
           onClick={() => setSelectedDetailChar(null)}
         >
           <div
-            className="glass-panel"
+            className="glass-panel modal-responsive-content"
             style={{
               maxWidth: '880px',
-              width: '100%',
-              maxHeight: '92vh',
-              overflowY: 'auto',
-              padding: '32px',
-              borderRadius: '16px',
               border: '1px solid rgba(255,255,255,0.15)',
               boxShadow: '0 20px 60px rgba(0,0,0,0.8)'
             }}
@@ -898,7 +865,7 @@ export const CharactersTab: React.FC = () => {
               <h4 style={{ color: '#fff', fontSize: '1rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Activity size={18} color="var(--accent-primary, #6366f1)" /> Caratteristiche di Base
               </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px' }}>
+              <div className="dnd-stats-grid">
                 {[
                   { key: 'str', label: 'FORZA', short: 'FOR', score: selectedDetailChar.stats?.str ?? 10 },
                   { key: 'dex', label: 'DESTREZZA', short: 'DES', score: selectedDetailChar.stats?.dex ?? 10 },

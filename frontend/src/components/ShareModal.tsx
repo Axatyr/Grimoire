@@ -67,21 +67,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(5, 8, 15, 0.85)',
-      backdropFilter: 'blur(10px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1500,
-      padding: '20px'
-    }}>
-      <div className="glass-panel animate-fade-in" style={{
+    <div className="modal-responsive-backdrop">
+      <div className="glass-panel modal-responsive-content animate-fade-in" style={{
         maxWidth: '480px',
-        width: '100%',
-        padding: '26px',
         border: '1px solid var(--accent-gold)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>

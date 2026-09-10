@@ -219,3 +219,249 @@ h1, h2, h3, .font-cinzel {
 .glow-active {
   animation: pulseGlow 3s infinite ease-in-out;
 }
+
+/* ========================================================
+   RESPONSIVE DESIGN SYSTEM (Desktop, iPad, iPhone/Mobile)
+   ======================================================== */
+
+/* General Container */
+.grimoire-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 28px;
+}
+
+@media (max-width: 1024px) {
+  .grimoire-container {
+    padding: 18px 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .grimoire-container {
+    padding: 12px 14px;
+  }
+  
+  /* Prevent iOS Safari from auto-zooming on focus when font-size < 16px */
+  .grimoire-input, .grimoire-select, .grimoire-textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Responsive Grid for Entity Cards (Bestiary, Quests, Items, Locations, NPCs, Gallery) */
+.responsive-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 640px) {
+  .responsive-grid-cards {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+/* Responsive Form Rows */
+.responsive-form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .responsive-form-row-2 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.responsive-form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .responsive-form-row-3 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+/* D&D Ability Scores Grid (FOR, DES, COS, INT, SAG, CAR) */
+.dnd-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .dnd-stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+}
+
+@media (max-width: 380px) {
+  .dnd-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+}
+
+/* StoryTree Main Layout */
+.story-main-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.25fr) minmax(320px, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 960px) {
+  .story-main-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* Modals Responsive */
+.modal-responsive-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 15, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+}
+
+.modal-responsive-content {
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 100%;
+  padding: 28px;
+}
+
+@media (max-width: 640px) {
+  .modal-responsive-backdrop {
+    padding: 10px;
+  }
+  .modal-responsive-content {
+    padding: 18px 14px;
+    max-height: 94vh;
+  }
+}
+
+/* Touch & Scroll Utilities */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Safe areas for iPhone dynamic island / notch / bottom bar */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+/* Navbar Responsive Styles */
+.navbar-top-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+  padding: 8px 0;
+}
+
+.navbar-brand-section {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.navbar-user-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .navbar-top-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 0 4px 0;
+  }
+  .navbar-brand-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+  .navbar-campaign-controls {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .navbar-campaign-controls .grimoire-select {
+    flex: 1;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbar-user-name, .navbar-online-text {
+    display: none !important;
+  }
+  .glass-panel {
+    padding: 14px !important;
+  }
+}
+
+/* Responsive Search / Filter Toolbar */
+.toolbar-responsive {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 640px) {
+  .toolbar-responsive {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .toolbar-responsive > div {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+
+
