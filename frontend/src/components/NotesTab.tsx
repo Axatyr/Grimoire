@@ -52,6 +52,7 @@ export const NotesTab: React.FC = () => {
     setIsPublic(false);
     setCustomProperties([]);
     setEditingNote(null);
+    setShowAddModal(false);
   };
 
   const openCreateModal = () => {

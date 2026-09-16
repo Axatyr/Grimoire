@@ -15,11 +15,11 @@ import { characterRouter } from './routes/character.routes.js';
 import { monsterRouter } from './routes/monster.routes.js';
 import { itemRouter } from './routes/item.routes.js';
 import { locationRouter } from './routes/location.routes.js';
-import { npcRouter } from './routes/npc.routes.js';
 import { questRouter } from './routes/quest.routes.js';
 import { storyRouter } from './routes/story.routes.js';
 import { noteRouter } from './routes/note.routes.js';
 import { imageRouter } from './routes/image.routes.js';
+import { searchRouter } from './routes/search.routes.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -58,11 +58,11 @@ app.use('/api/characters', characterRouter);
 app.use('/api/monsters', monsterRouter);
 app.use('/api/items', itemRouter);
 app.use('/api/locations', locationRouter);
-app.use('/api/npcs', npcRouter);
 app.use('/api/quests', questRouter);
 app.use('/api/story', storyRouter);
 app.use('/api/notes', noteRouter);
 app.use('/api/images', imageRouter);
+app.use('/api/search', searchRouter);
 
 // Global error handler
 app.use(errorHandler);

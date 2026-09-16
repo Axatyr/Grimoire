@@ -71,6 +71,7 @@ export const MonstersTab: React.FC = () => {
     setVisibility('PRIVATE_MASTER');
     setCustomProperties([]);
     setEditingMonster(null);
+    setShowAddModal(false);
   };
 
   const openCreateModal = () => {

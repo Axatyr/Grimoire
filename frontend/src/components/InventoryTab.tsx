@@ -130,6 +130,7 @@ export const InventoryTab: React.FC = () => {
     setVisibility(activeSection === 'DM_STASH' ? 'PRIVATE_MASTER' : 'PUBLIC_PLAYERS');
     setCustomProperties([]);
     setEditingItem(null);
+    setShowAddModal(false);
   };
 
   const openCreateModal = () => {

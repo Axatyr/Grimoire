@@ -13,7 +13,7 @@ interface Location {
   parentId?: string | null;
   parent?: { id: string; name: string };
   children?: Array<{ id: string; name: string }>;
-  npcs?: Array<{ id: string; name: string; role?: string }>;
+  characters?: Array<{ id: string; name: string; role?: string; class?: string; isNpc?: boolean }>;
   visibility: 'PRIVATE_MASTER' | 'PUBLIC_PLAYERS';
   customProperties?: CustomProperty[];
 }
@@ -65,6 +65,7 @@ export const LocationsTab: React.FC = () => {
     setVisibility('PUBLIC_PLAYERS');
     setCustomProperties([]);
     setEditingLocation(null);
+    setShowAddModal(false);
   };
 
   const openCreateModal = () => {
@@ -160,8 +161,8 @@ export const LocationsTab: React.FC = () => {
       const matchDesc = loc.description?.toLowerCase().includes(q);
       const matchParent = loc.parent?.name?.toLowerCase().includes(q);
       const matchChildren = loc.children?.some(c => c.name.toLowerCase().includes(q));
-      const matchNpcs = loc.npcs?.some(n => n.name.toLowerCase().includes(q));
-      if (!matchName && !matchDesc && !matchParent && !matchChildren && !matchNpcs) return false;
+      const matchCharacters = loc.characters?.some(n => n.name.toLowerCase().includes(q));
+      if (!matchName && !matchDesc && !matchParent && !matchChildren && !matchCharacters) return false;
     }
 
     if (filterHierarchy === 'ROOT' && loc.parentId) return false;
@@ -210,7 +211,7 @@ export const LocationsTab: React.FC = () => {
               className="grimoire-input"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Cerca luogo per nome, descrizione, PNG o sotto-aree..."
+              placeholder="Cerca luogo per nome, descrizione, NPC o sotto-aree..."
               style={{ paddingLeft: '36px', paddingRight: searchQuery ? '32px' : '12px', height: '38px', fontSize: '0.85rem' }}
             />
             {searchQuery && (
@@ -357,16 +358,16 @@ export const LocationsTab: React.FC = () => {
                 </div>
               )}
 
-              {/* NPCs located here */}
-              {loc.npcs && loc.npcs.length > 0 && (
+              {/* Inhabitants located here */}
+              {loc.characters && loc.characters.length > 0 && (
                 <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', marginBottom: '8px' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                    Abitanti & NPC presenti:
+                    Abitanti & Personaggi presenti:
                   </span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                    {loc.npcs.map(npc => (
-                      <span key={npc.id} className="badge badge-player" style={{ fontSize: '0.75rem' }}>
-                        {npc.name} ({npc.role || 'NPC'})
+                    {loc.characters.map(char => (
+                      <span key={char.id} className={`badge ${char.isNpc ? 'badge-player' : 'badge-master'}`} style={{ fontSize: '0.75rem' }}>
+                        {char.name} ({char.role || char.class || (char.isNpc ? 'NPC' : 'PG')})
                       </span>
                     ))}
                   </div>

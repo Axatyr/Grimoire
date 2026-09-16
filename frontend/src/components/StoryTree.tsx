@@ -143,8 +143,7 @@ export const StoryTree: React.FC = () => {
   const fetchEntitiesForLinks = async () => {
     if (!activeCampaign || !isMaster) return;
     try {
-      const [npcsRes, monstersRes, locsRes, itemsRes, questsRes, charsRes] = await Promise.all([
-        apiFetch(`/npcs?campaignId=${activeCampaign.id}`),
+      const [monstersRes, locsRes, itemsRes, questsRes, charsRes] = await Promise.all([
         apiFetch(`/monsters?campaignId=${activeCampaign.id}`),
         apiFetch(`/locations?campaignId=${activeCampaign.id}`),
         apiFetch(`/items?campaignId=${activeCampaign.id}`),
@@ -152,12 +151,13 @@ export const StoryTree: React.FC = () => {
         apiFetch(`/characters?campaignId=${activeCampaign.id}`),
       ]);
 
-      setAvailableNpcs(npcsRes.npcs || []);
+      const allChars = charsRes.characters || [];
+      setAvailableNpcs(allChars.filter((c: any) => c.isNpc));
+      setAvailableCharacters(allChars.filter((c: any) => !c.isNpc));
       setAvailableMonsters(monstersRes.monsters || []);
       setAvailableLocations(locsRes.locations || []);
       setAvailableItems(itemsRes.items || []);
       setAvailableQuests(questsRes.quests || []);
-      setAvailableCharacters(charsRes.characters || []);
     } catch (err) {
       console.error('Failed to fetch entities for links', err);
     }

@@ -32,7 +32,6 @@ export const getCampaigns = async (req: AuthRequest, res: Response, next: NextFu
             items: true,
             locations: true,
             quests: true,
-            npcs: true,
           }
         }
       },

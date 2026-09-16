@@ -10,8 +10,12 @@ export const characterSchema = z.object({
   campaignId: z.string().uuid(),
   userId: z.string().uuid().optional().nullable(),
   name: z.string().min(1).max(100),
-  race: z.string().optional(),
-  class: z.string().optional(),
+  race: z.string().optional().nullable(),
+  class: z.string().optional().nullable(),
+  role: z.string().optional().nullable(),
+  faction: z.string().optional().nullable(),
+  attitude: z.string().optional().nullable(),
+  secrets: z.string().optional().nullable(),
   level: z.number().int().min(1).default(1),
   hpMax: z.number().int().default(10),
   hpCurrent: z.number().int().default(10),
@@ -23,8 +27,9 @@ export const characterSchema = z.object({
     value: z.string(),
     isSecret: z.boolean().default(false)
   })).optional(),
-  inventoryNotes: z.string().optional(),
+  inventoryNotes: z.string().optional().nullable(),
   avatarUrl: z.string().optional().nullable(),
+  locationId: z.string().uuid().optional().nullable(),
   isNpc: z.boolean().default(false),
   visibility: z.nativeEnum(Visibility).default(Visibility.PUBLIC_PLAYERS),
 });
@@ -41,6 +46,7 @@ export const getCharacters = async (req: AuthRequest, res: Response, next: NextF
       },
       include: {
         user: { select: { id: true, username: true } },
+        location: { select: { id: true, name: true } },
         items: { where: { deletedAt: null } },
       },
       orderBy: { name: 'asc' }
@@ -61,7 +67,9 @@ export const getCharacterById = async (req: AuthRequest, res: Response, next: Ne
       where: { id, deletedAt: null },
       include: {
         user: { select: { id: true, username: true } },
+        location: true,
         items: { where: { deletedAt: null } },
+        quests: { where: { deletedAt: null } },
         campaign: { select: { id: true, title: true, masterId: true } }
       }
     });

@@ -38,11 +38,12 @@ const resolveNodeLinks = async (links: Array<{ id: string; storyNodeId: string; 
 
       try {
         switch (link.entityType) {
-          case 'NPC': {
-            const npc = await prisma.nPC.findUnique({ where: { id: link.entityId }, select: { name: true, role: true, faction: true } });
-            if (npc) {
-              entityName = npc.name;
-              extraInfo = { role: npc.role, faction: npc.faction };
+          case 'NPC':
+          case 'CHARACTER': {
+            const char = await prisma.character.findUnique({ where: { id: link.entityId }, select: { name: true, role: true, class: true, faction: true, level: true, isNpc: true } });
+            if (char) {
+              entityName = char.name;
+              extraInfo = { role: char.role || char.class, faction: char.faction, level: char.level, isNpc: char.isNpc };
             }
             break;
           }
@@ -74,14 +75,6 @@ const resolveNodeLinks = async (links: Array<{ id: string; storyNodeId: string; 
             if (quest) {
               entityName = quest.title;
               extraInfo = { status: quest.status, objective: quest.objective };
-            }
-            break;
-          }
-          case 'CHARACTER': {
-            const char = await prisma.character.findUnique({ where: { id: link.entityId }, select: { name: true, class: true, level: true } });
-            if (char) {
-              entityName = char.name;
-              extraInfo = { class: char.class, level: char.level };
             }
             break;
           }

@@ -57,6 +57,7 @@ export const QuestsTab: React.FC = () => {
     setVisibility('PUBLIC_PLAYERS');
     setCustomProperties([]);
     setEditingQuest(null);
+    setShowAddModal(false);
   };
 
   const openCreateModal = () => {

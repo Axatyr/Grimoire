@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
-import { Shield, Sparkles, User, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Shield, Sparkles, User, Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export const AuthModal: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({ isOpen }) => {
   const { login } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'MASTER' | 'PLAYER'>('MASTER');
   const [error, setError] = useState<string | null>(null);
@@ -135,14 +136,39 @@ export const AuthModal: React.FC<{ isOpen: boolean; onClose?: () => void }> = ({
             <div style={{ position: 'relative' }}>
               <Lock size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-dim)' }} />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 className="grimoire-input"
-                style={{ paddingLeft: '38px' }}
+                style={{ paddingLeft: '38px', paddingRight: '40px' }}
                 placeholder="••••••••"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? 'Nascondi password' : 'Mostra password'}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-dim)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '4px',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-main)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-dim)')}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 

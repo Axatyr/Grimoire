@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
 import {
   Users,
+  UserCheck,
   Plus,
   Heart,
   Shield,
@@ -19,7 +20,10 @@ import {
   Compass,
   Zap,
   Search,
-  Package
+  Package,
+  Lock,
+  Bookmark,
+  User
 } from 'lucide-react';
 import { CustomPropertiesEditor, CustomPropertiesView, type CustomProperty } from './CustomPropertiesEditor';
 
@@ -28,6 +32,10 @@ interface Character {
   name: string;
   race?: string;
   class?: string;
+  role?: string;
+  faction?: string;
+  attitude?: string;
+  secrets?: string;
   level: number;
   hpMax: number;
   hpCurrent: number;
@@ -67,16 +75,22 @@ export const CharactersTab: React.FC = () => {
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [selectedDetailChar, setSelectedDetailChar] = useState<Character | null>(null);
   const [charSearch, setCharSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'PG' | 'NPC'>('ALL');
 
   // Form state
   const [name, setName] = useState('');
   const [race, setRace] = useState('');
   const [charClass, setCharClass] = useState('');
+  const [role, setRole] = useState('');
+  const [faction, setFaction] = useState('');
+  const [attitude, setAttitude] = useState('Neutrale');
+  const [secrets, setSecrets] = useState('');
   const [level, setLevel] = useState(1);
   const [hpMax, setHpMax] = useState(10);
   const [hpCurrent, setHpCurrent] = useState(10);
   const [ac, setAc] = useState(10);
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [isNpc, setIsNpc] = useState(false);
   const [visibility, setVisibility] = useState<'PUBLIC_PLAYERS' | 'PRIVATE_MASTER'>('PUBLIC_PLAYERS');
   const [customProperties, setCustomProperties] = useState<CustomProperty[]>([]);
 
@@ -116,11 +130,16 @@ export const CharactersTab: React.FC = () => {
     setName('');
     setRace('');
     setCharClass('');
+    setRole('');
+    setFaction('');
+    setAttitude('Neutrale');
+    setSecrets('');
     setLevel(1);
     setHpMax(10);
     setHpCurrent(10);
     setAc(10);
     setAvatarUrl('');
+    setIsNpc(false);
     setVisibility('PUBLIC_PLAYERS');
     setCustomProperties([]);
     setStr(10);
@@ -131,10 +150,12 @@ export const CharactersTab: React.FC = () => {
     setCha(10);
     setInventoryNotes('');
     setEditingCharacter(null);
+    setShowAddModal(false);
   };
 
-  const openCreateModal = () => {
+  const openCreateModal = (defaultNpc: boolean = false) => {
     resetForm();
+    setIsNpc(defaultNpc);
     setShowAddModal(true);
   };
 
@@ -143,11 +164,16 @@ export const CharactersTab: React.FC = () => {
     setName(char.name);
     setRace(char.race || '');
     setCharClass(char.class || '');
+    setRole(char.role || '');
+    setFaction(char.faction || '');
+    setAttitude(char.attitude || 'Neutrale');
+    setSecrets(char.secrets || '');
     setLevel(char.level);
     setHpMax(char.hpMax);
     setHpCurrent(char.hpCurrent);
     setAc(char.ac);
     setAvatarUrl(char.avatarUrl || '');
+    setIsNpc(Boolean(char.isNpc));
     setVisibility(char.visibility || 'PUBLIC_PLAYERS');
     setCustomProperties(Array.isArray(char.customProperties) ? char.customProperties : []);
     const st = char.stats || {};
@@ -169,7 +195,11 @@ export const CharactersTab: React.FC = () => {
       campaignId: activeCampaign.id,
       name,
       race,
-      class: charClass,
+      class: charClass || role,
+      role: role || charClass,
+      faction,
+      attitude,
+      secrets,
       level: Number(level),
       hpMax: Number(hpMax),
       hpCurrent: Number(hpCurrent),
@@ -186,7 +216,7 @@ export const CharactersTab: React.FC = () => {
         cha: Number(cha)
       },
       inventoryNotes,
-      isNpc: false
+      isNpc: Boolean(isNpc)
     };
 
     try {
@@ -256,13 +286,19 @@ export const CharactersTab: React.FC = () => {
     }
   };
 
+  const pgCount = characters.filter(c => !c.isNpc).length;
+  const npcCount = characters.filter(c => c.isNpc).length;
+
   const filteredCharacters = characters.filter(c => {
+    if (typeFilter === 'PG' && c.isNpc) return false;
+    if (typeFilter === 'NPC' && !c.isNpc) return false;
     if (!charSearch.trim()) return true;
     const q = charSearch.toLowerCase();
     return c.name.toLowerCase().includes(q) ||
       c.race?.toLowerCase().includes(q) ||
       c.class?.toLowerCase().includes(q) ||
-      c.user?.username?.toLowerCase().includes(q);
+      c.user?.username?.toLowerCase().includes(q) ||
+      c.inventoryNotes?.toLowerCase().includes(q);
   });
 
   if (!activeCampaign) return null;
@@ -272,29 +308,60 @@ export const CharactersTab: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Users color="var(--primary)" /> Personaggi del Party
+            <Users color="var(--primary)" /> Personaggi & NPC di Campagna
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>
-            Schede eroi, punti ferita, caratteristiche D&D, classe, livello, proprietà customizzate ed equipaggiamento.
+            Schede eroi dei giocatori (PG), alleati, mercanti e figure chiave (NPC) con caratteristiche D&D, HP, equipaggiamento e note.
           </p>
         </div>
         {isMaster && (
-          <button onClick={openCreateModal} className="grimoire-btn grimoire-btn-primary">
-            <Plus size={16} /> Nuovo Personaggio
-          </button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={() => openCreateModal(false)} className="grimoire-btn grimoire-btn-primary">
+              <Plus size={16} /> Nuovo PG
+            </button>
+            <button onClick={() => openCreateModal(true)} className="grimoire-btn grimoire-btn-gold">
+              <Plus size={16} /> Nuovo NPC
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Characters Search & Count Toolbar */}
+      {/* Characters Search & Category Filter Toolbar */}
       <div className="toolbar-responsive">
-        <div style={{ position: 'relative', width: '100%' }}>
+        {/* Category Pills */}
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setTypeFilter('ALL')}
+            className={`grimoire-btn ${typeFilter === 'ALL' ? 'grimoire-btn-primary' : 'grimoire-btn-secondary'}`}
+            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+          >
+            Tutti ({characters.length})
+          </button>
+          <button
+            onClick={() => setTypeFilter('PG')}
+            className={`grimoire-btn ${typeFilter === 'PG' ? 'grimoire-btn-primary' : 'grimoire-btn-secondary'}`}
+            style={{ padding: '6px 12px', fontSize: '0.8rem', gap: '5px' }}
+          >
+            <Shield size={13} /> PG Giocatori ({pgCount})
+          </button>
+          <button
+            onClick={() => setTypeFilter('NPC')}
+            className={`grimoire-btn ${typeFilter === 'NPC' ? 'grimoire-btn-gold' : 'grimoire-btn-secondary'}`}
+            style={{ padding: '6px 12px', fontSize: '0.8rem', gap: '5px' }}
+          >
+            <UserCheck size={13} /> NPC ({npcCount})
+          </button>
+        </div>
+
+        {/* Search Field */}
+        <div style={{ position: 'relative', minWidth: '240px', flex: 1, maxWidth: '380px' }}>
           <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             className="grimoire-input"
             value={charSearch}
             onChange={e => setCharSearch(e.target.value)}
-            placeholder="Cerca eroe per nome, razza, classe o giocatore..."
-            style={{ paddingLeft: '36px', paddingRight: charSearch ? '30px' : '10px', height: '38px', fontSize: '0.9rem', width: '100%' }}
+            placeholder="Cerca per nome, razza, classe..."
+            style={{ paddingLeft: '36px', paddingRight: charSearch ? '30px' : '10px', height: '36px', fontSize: '0.85rem', width: '100%' }}
           />
           {charSearch && (
             <button
@@ -305,26 +372,25 @@ export const CharactersTab: React.FC = () => {
             </button>
           )}
         </div>
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-          <strong>{filteredCharacters.length}</strong> {filteredCharacters.length === 1 ? 'personaggio trovato' : 'personaggi trovati'}
-        </div>
       </div>
 
-      <div className="responsive-grid-cards">
+      <div className="characters-card-grid">
         {filteredCharacters.map(char => {
-          const hpRatio = (char.hpCurrent / char.hpMax) * 100;
+          const hpRatio = Math.max(0, Math.min(100, (char.hpCurrent / char.hpMax) * 100));
           const hpColor = hpRatio > 50 ? 'var(--accent-emerald)' : hpRatio > 25 ? 'var(--accent-gold)' : 'var(--accent-crimson)';
 
           return (
-            <div key={char.id} className="glass-panel glass-panel-hover" style={{ position: 'relative', overflow: 'hidden' }}>
+            <div key={char.id} className="character-card">
               {/* Header card */}
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px', minWidth: 0 }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', minWidth: 0 }}>
                 <div style={{
-                  width: '54px',
-                  height: '54px',
+                  width: '52px',
+                  height: '52px',
                   borderRadius: '12px',
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(6, 182, 212, 0.2))',
-                  border: '1px solid var(--border-glow)',
+                  background: char.isNpc
+                    ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(236, 72, 153, 0.2))'
+                    : 'linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(6, 182, 212, 0.2))',
+                  border: char.isNpc ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid var(--border-glow)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -334,12 +400,18 @@ export const CharactersTab: React.FC = () => {
                   {char.avatarUrl ? (
                     <img src={char.avatarUrl} alt={char.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <span style={{ fontSize: '1.4rem' }}>🧙‍♂️</span>
+                    <span style={{ fontSize: '1.35rem' }}>{char.isNpc ? '👤' : '🧙‍♂️'}</span>
                   )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ fontSize: '1.25rem', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{char.name}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
+                    <h3 style={{ fontSize: '1.15rem', color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{char.name}</h3>
+
+                    {/* PG vs NPC Badge */}
+                    <span className={`badge ${char.isNpc ? 'badge-rarity-rare' : 'badge-rarity-uncommon'}`} style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
+                      {char.isNpc ? <><UserCheck size={10} /> NPC</> : <><Shield size={10} /> PG</>}
+                    </span>
+
                     {isMaster && (
                       <button
                         onClick={() => handleToggleVisibility(char)}
@@ -347,94 +419,95 @@ export const CharactersTab: React.FC = () => {
                         title={char.visibility === 'PRIVATE_MASTER' ? 'Privato al Master (clicca per rendere pubblico)' : 'Pubblico per tutti i player (clicca per nascondere)'}
                       >
                         {char.visibility === 'PRIVATE_MASTER' ? (
-                          <span className="badge badge-rarity-legendary" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <EyeOff size={11} /> DM Only
+                          <span className="badge badge-rarity-legendary" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.65rem', padding: '1px 5px' }}>
+                            <EyeOff size={10} /> DM
                           </span>
                         ) : (
-                          <span className="badge badge-rarity-uncommon" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <Eye size={11} /> Pubblico
+                          <span className="badge badge-rarity-common" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.65rem', padding: '1px 5px' }}>
+                            <Eye size={10} /> Pubblico
                           </span>
                         )}
                       </button>
                     )}
                   </div>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    {char.race || 'Eroe'} {char.class || 'Avventuriero'} • Liv. {char.level}
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '4px' }}>
+                    {char.race || (char.isNpc ? 'NPC' : 'Eroe')} {char.class ? `• ${char.class}` : ''} • Liv. {char.level}
                   </p>
+                  {(char.faction || char.attitude || (isMaster && char.secrets)) && (
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {char.faction && (
+                        <span className="badge badge-rarity-uncommon" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>
+                          🏛️ {char.faction}
+                        </span>
+                      )}
+                      {char.attitude && (
+                        <span className="badge badge-rarity-common" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>
+                          {char.attitude}
+                        </span>
+                      )}
+                      {isMaster && char.secrets && (
+                        <span className="badge badge-rarity-legendary" style={{ fontSize: '0.65rem', padding: '1px 5px', display: 'inline-flex', alignItems: 'center', gap: '2px' }} title="Contiene segreti per il DM">
+                          <Lock size={9} /> Segreti DM
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {isMaster && (
-                  <div style={{ display: 'flex', gap: '6px' }}>
+                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                     <button
                       onClick={() => openEditModal(char)}
                       className="grimoire-btn grimoire-btn-secondary"
-                      style={{ padding: '6px', fontSize: '0.8rem' }}
-                      title="Modifica Personaggio"
+                      style={{ padding: '6px', fontSize: '0.75rem', borderRadius: '6px' }}
+                      title="Modifica"
                     >
-                      <Edit2 size={14} />
+                      <Edit2 size={13} />
                     </button>
                     <button
                       onClick={() => handleDeleteCharacter(char.id)}
                       className="grimoire-btn grimoire-btn-danger"
-                      style={{ padding: '6px', fontSize: '0.8rem' }}
-                      title="Elimina Personaggio"
+                      style={{ padding: '6px', fontSize: '0.75rem', borderRadius: '6px' }}
+                      title="Elimina"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Stats & Armor Class */}
-              <div className="responsive-form-row-2" style={{ gap: '8px', marginBottom: '16px' }}>
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Shield size={16} color="var(--primary)" />
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Classe Armatura</div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{char.ac}</div>
-                  </div>
+              {/* Vitals Strip: Armor Class + HP Bar & Quick Adjust */}
+              <div className="character-vitals-strip">
+                {/* AC Badge */}
+                <div className="character-ac-badge">
+                  <Shield size={16} color="var(--primary)" style={{ marginBottom: '2px' }} />
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{char.ac}</div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '2px' }}>CA</div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Award size={16} color="var(--accent-gold)" />
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Giocatore</div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>{char.user?.username || 'Non assegnato'}</div>
+
+                {/* HP Monitor */}
+                <div className="character-hp-monitor">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                      <Heart size={13} color={hpColor} /> Punti Ferita
+                    </span>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 700, color: hpColor }}>
+                      {char.hpCurrent} <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>/ {char.hpMax}</span>
+                    </span>
+                  </div>
+                  <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', margin: '4px 0 8px 0' }}>
+                    <div style={{ height: '100%', width: `${hpRatio}%`, background: hpColor, transition: 'width 0.3s ease', borderRadius: '3px' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px' }}>
+                    <button onClick={() => handleAdjustHp(char.id, -5)} className="grimoire-btn grimoire-btn-secondary" style={{ padding: '2px 6px', fontSize: '0.7rem', flex: 1, justifyContent: 'center' }}>-5</button>
+                    <button onClick={() => handleAdjustHp(char.id, -1)} className="grimoire-btn grimoire-btn-secondary" style={{ padding: '2px 6px', fontSize: '0.7rem', flex: 1, justifyContent: 'center' }}>-1</button>
+                    <button onClick={() => handleAdjustHp(char.id, +1)} className="grimoire-btn grimoire-btn-secondary" style={{ padding: '2px 6px', fontSize: '0.7rem', flex: 1, justifyContent: 'center' }}>+1</button>
+                    <button onClick={() => handleAdjustHp(char.id, +5)} className="grimoire-btn grimoire-btn-secondary" style={{ padding: '2px 6px', fontSize: '0.7rem', flex: 1, justifyContent: 'center' }}>+5</button>
                   </div>
                 </div>
               </div>
 
-              {/* HP Bar & Interactive Controls */}
-              <div style={{ background: 'rgba(10, 14, 24, 0.8)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Heart size={14} color={hpColor} /> Punti Ferita (HP)
-                  </span>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: hpColor }}>
-                    {char.hpCurrent} / {char.hpMax}
-                  </span>
-                </div>
-                <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden', marginBottom: '10px' }}>
-                  <div style={{ height: '100%', width: `${hpRatio}%`, background: hpColor, transition: 'width 0.3s ease' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                  <button onClick={() => handleAdjustHp(char.id, -5)} className="grimoire-btn grimoire-btn-secondary" style={{ padding: '3px 8px', fontSize: '0.75rem' }}>-5</button>
-                  <button onClick={() => handleAdjustHp(char.id, -1)} className="grimoire-btn grimoire-btn-secondary" style={{ padding: '3px 8px', fontSize: '0.75rem' }}>-1</button>
-                  <button onClick={() => handleAdjustHp(char.id, +1)} className="grimoire-btn grimoire-btn-secondary" style={{ padding: '3px 8px', fontSize: '0.75rem' }}>+1</button>
-                  <button onClick={() => handleAdjustHp(char.id, +5)} className="grimoire-btn grimoire-btn-secondary" style={{ padding: '3px 8px', fontSize: '0.75rem' }}>+5</button>
-                </div>
-              </div>
-
-              {/* Mini 6-Ability Scores Strip */}
-              <div
-                className="dnd-stats-grid"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  padding: '8px 6px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-subtle)',
-                  marginBottom: '14px',
-                  textAlign: 'center'
-                }}
-              >
+              {/* 6 Ability Scores */}
+              <div className="dnd-stats-grid" style={{ gap: '6px' }}>
                 {[
                   { label: 'FOR', val: char.stats?.str ?? 10 },
                   { label: 'DES', val: char.stats?.dex ?? 10 },
@@ -443,29 +516,44 @@ export const CharactersTab: React.FC = () => {
                   { label: 'SAG', val: char.stats?.wis ?? 10 },
                   { label: 'CAR', val: char.stats?.cha ?? 10 }
                 ].map(s => (
-                  <div key={s.label}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--accent-gold)', fontWeight: 700 }}>{s.label}</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff' }}>{s.val}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{getModifier(s.val)}</div>
+                  <div key={s.label} className="dnd-compact-stat">
+                    <div style={{ fontSize: '0.62rem', color: 'var(--accent-gold)', fontWeight: 700, letterSpacing: '0.5px' }}>{s.label}</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', margin: '1px 0' }}>{getModifier(s.val)}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{s.val}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Controller Info (Player or DM) */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', padding: '2px 2px' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <User size={12} /> Controllo:
+                </span>
+                <span style={{ color: '#e2e8f0', fontWeight: 500 }}>
+                  {char.isNpc ? 'Dungeon Master' : (char.user?.username || 'Non assegnato')}
+                </span>
               </div>
 
               {/* Custom Properties */}
               <CustomPropertiesView properties={char.customProperties} isMaster={isMaster} />
 
-              {/* Inventory items preview */}
+              {/* Inventory preview */}
               {char.items && char.items.length > 0 && (
-                <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid var(--border-subtle)' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                <div style={{ paddingTop: '8px', borderTop: '1px solid var(--border-subtle)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
                     Oggetti in dotazione ({char.items.length}):
                   </span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                    {char.items.map(item => (
-                      <span key={item.id} className="badge badge-rarity-uncommon" style={{ fontSize: '0.75rem' }}>
+                    {char.items.slice(0, 4).map(item => (
+                      <span key={item.id} className="badge badge-rarity-uncommon" style={{ fontSize: '0.7rem' }}>
                         {item.name}
                       </span>
                     ))}
+                    {char.items.length > 4 && (
+                      <span className="badge badge-rarity-common" style={{ fontSize: '0.7rem' }}>
+                        +{char.items.length - 4} altri
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -476,15 +564,15 @@ export const CharactersTab: React.FC = () => {
                 className="grimoire-btn grimoire-btn-primary"
                 style={{
                   width: '100%',
-                  marginTop: '16px',
+                  marginTop: 'auto',
                   gap: '8px',
                   padding: '9px',
-                  fontSize: '0.85rem',
+                  fontSize: '0.84rem',
                   justifyContent: 'center',
-                  background: 'linear-gradient(135deg, var(--primary), #7c3aed)'
+                  background: char.isNpc ? 'linear-gradient(135deg, #d97706, #b45309)' : 'linear-gradient(135deg, var(--primary), #7c3aed)'
                 }}
               >
-                <Maximize2 size={15} /> Espandi Scheda Completa
+                <Maximize2 size={14} /> Espandi Scheda Completa
               </button>
             </div>
           );
@@ -497,27 +585,96 @@ export const CharactersTab: React.FC = () => {
           <div className="glass-panel modal-responsive-content animate-fade-in" style={{ maxWidth: '560px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.3rem' }}>
-                {editingCharacter ? 'Modifica Personaggio' : 'Crea Scheda Personaggio'}
+                {editingCharacter
+                  ? (isNpc ? 'Modifica NPC' : 'Modifica PG Giocatore')
+                  : (isNpc ? 'Nuovo NPC' : 'Nuovo Personaggio Giocatore')}
               </h3>
               <button onClick={resetForm} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={handleSaveCharacter} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Type Switcher */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Nome Personaggio</label>
-                <input className="grimoire-input" value={name} onChange={e => setName(e.target.value)} placeholder="es. Elidor delle Ombre" required />
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                  Tipologia Scheda
+                </label>
+                <div className="responsive-form-row-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsNpc(false)}
+                    className={`grimoire-btn ${!isNpc ? 'grimoire-btn-primary' : 'grimoire-btn-secondary'}`}
+                    style={{ justifyContent: 'center', fontSize: '0.85rem', padding: '8px' }}
+                  >
+                    <Shield size={15} /> PG Giocatore
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsNpc(true)}
+                    className={`grimoire-btn ${isNpc ? 'grimoire-btn-gold' : 'grimoire-btn-secondary'}`}
+                    style={{ justifyContent: 'center', fontSize: '0.85rem', padding: '8px' }}
+                  >
+                    <UserCheck size={15} /> NPC
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  Nome {isNpc ? 'NPC' : 'Personaggio'}
+                </label>
+                <input className="grimoire-input" value={name} onChange={e => setName(e.target.value)} placeholder={isNpc ? 'es. Gundren Rockseeker, Sildar Hallwinter' : 'es. Elidor delle Ombre'} required />
               </div>
               <div className="responsive-form-row-2">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Razza</label>
-                  <input className="grimoire-input" value={race} onChange={e => setRace(e.target.value)} placeholder="es. Elfo, Umano, Tiefling" />
+                  <input className="grimoire-input" value={race} onChange={e => setRace(e.target.value)} placeholder="es. Nano, Elfo, Umano, Tiefling" />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Classe</label>
-                  <input className="grimoire-input" value={charClass} onChange={e => setCharClass(e.target.value)} placeholder="es. Mago, Guerriero, Ladro" />
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    {isNpc ? 'Ruolo / Occupazione' : 'Classe'}
+                  </label>
+                  <input className="grimoire-input" value={charClass} onChange={e => setCharClass(e.target.value)} placeholder={isNpc ? 'es. Donzella, Oste, Fabbro, Chierico' : 'es. Mago, Guerriero, Ladro'} />
                 </div>
               </div>
+
+              {/* Faction & Attitude (especially relevant for NPC / Factions) */}
+              <div className="responsive-form-row-2">
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    Fazione / Alleanza (opzionale)
+                  </label>
+                  <input className="grimoire-input" value={faction} onChange={e => setFaction(e.target.value)} placeholder="es. Arpisti, Zhentarim, Barovia" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    Attitudine
+                  </label>
+                  <select className="grimoire-select" value={attitude} onChange={e => setAttitude(e.target.value)}>
+                    <option value="Amichevole">🟢 Amichevole</option>
+                    <option value="Neutrale">🟡 Neutrale</option>
+                    <option value="Diffidente">🟠 Diffidente</option>
+                    <option value="Ostile">🔴 Ostile</option>
+                    <option value="Sconosciuta">⚪ Sconosciuta</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Secret DM Note for Master */}
+              {isMaster && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem', color: '#fca5a5', fontWeight: 600, marginBottom: '4px' }}>
+                    <Lock size={13} /> Segreti del DM (Visibili SOLO al Master)
+                  </label>
+                  <textarea
+                    className="grimoire-input"
+                    style={{ minHeight: '50px', resize: 'vertical', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                    value={secrets}
+                    onChange={e => setSecrets(e.target.value)}
+                    placeholder="Informazioni segrete, vera identità, motivazioni oscure..."
+                  />
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Livello</label>
@@ -587,17 +744,17 @@ export const CharactersTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Note Inventario & Monete */}
+              {/* Note Inventario & Monete / Dettagli NPC */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                  Note Inventario & Monete
+                  {isNpc ? 'Note NPC, Fazione & Equipaggiamento' : 'Note Inventario & Monete'}
                 </label>
                 <textarea
                   className="grimoire-input"
                   style={{ minHeight: '60px', resize: 'vertical' }}
                   value={inventoryNotes}
                   onChange={e => setInventoryNotes(e.target.value)}
-                  placeholder="Monete d'oro, equipaggiamento speciale, zaino..."
+                  placeholder={isNpc ? 'Fazione: Arpisti, Attitudine: Amichevole, Segreti o oggetti chiave...' : "Monete d'oro, equipaggiamento speciale, zaino..."}
                 />
               </div>
 
@@ -611,7 +768,7 @@ export const CharactersTab: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '14px' }}>
                 <button type="button" onClick={resetForm} className="grimoire-btn grimoire-btn-secondary">Annulla</button>
                 <button type="submit" className="grimoire-btn grimoire-btn-primary">
-                  {editingCharacter ? 'Salva Modifiche' : 'Crea Personaggio'}
+                  {editingCharacter ? 'Salva Modifiche' : (isNpc ? 'Crea NPC' : 'Crea Personaggio')}
                 </button>
               </div>
             </form>
@@ -649,22 +806,25 @@ export const CharactersTab: React.FC = () => {
                       width: '72px',
                       height: '72px',
                       borderRadius: '50%',
-                      background: 'rgba(99, 102, 241, 0.15)',
-                      border: '2px solid rgba(99, 102, 241, 0.4)',
+                      background: selectedDetailChar.isNpc ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                      border: selectedDetailChar.isNpc ? '2px solid rgba(245, 158, 11, 0.4)' : '2px solid rgba(99, 102, 241, 0.4)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'var(--accent-primary, #6366f1)'
+                      fontSize: '2rem'
                     }}
                   >
-                    <Users size={36} />
+                    {selectedDetailChar.isNpc ? '👤' : '🧙‍♂️'}
                   </div>
                 )}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: 0 }}>
                       {selectedDetailChar.name}
                     </h2>
+                    <span className={`badge ${selectedDetailChar.isNpc ? 'badge-rarity-rare' : 'badge-rarity-uncommon'}`}>
+                      {selectedDetailChar.isNpc ? <><UserCheck size={11} /> NPC</> : <><Shield size={11} /> PG Giocatore</>}
+                    </span>
                     <span style={{
                       fontSize: '0.75rem',
                       padding: '2px 8px',
@@ -677,13 +837,25 @@ export const CharactersTab: React.FC = () => {
                     </span>
                   </div>
                   <p style={{ color: 'var(--text-muted)', margin: '4px 0 0 0', fontSize: '1rem' }}>
-                    {selectedDetailChar.race || 'Razza N/D'} • {selectedDetailChar.class || 'Classe N/D'} • <strong>Livello {selectedDetailChar.level}</strong>
+                    {selectedDetailChar.race || (selectedDetailChar.isNpc ? 'NPC' : 'Razza N/D')} • {selectedDetailChar.class || 'Classe N/D'} • <strong>Livello {selectedDetailChar.level}</strong>
                   </p>
-                  {selectedDetailChar.user && (
-                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '2px 0 0 0' }}>
-                      Giocatore: <strong>{selectedDetailChar.user.username}</strong>
-                    </p>
+                  {(selectedDetailChar.faction || selectedDetailChar.attitude) && (
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                      {selectedDetailChar.faction && (
+                        <span className="badge badge-rarity-uncommon" style={{ fontSize: '0.75rem' }}>
+                          🏛️ Fazione: {selectedDetailChar.faction}
+                        </span>
+                      )}
+                      {selectedDetailChar.attitude && (
+                        <span className="badge badge-rarity-common" style={{ fontSize: '0.75rem' }}>
+                          Attitudine: {selectedDetailChar.attitude}
+                        </span>
+                      )}
+                    </div>
                   )}
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                    Controllo: <strong>{selectedDetailChar.isNpc ? 'Dungeon Master' : (selectedDetailChar.user?.username || 'Non assegnato')}</strong>
+                  </p>
                 </div>
               </div>
 
@@ -973,7 +1145,7 @@ export const CharactersTab: React.FC = () => {
 
             {/* Tratti & Proprietà Aggiuntive */}
             {selectedDetailChar.customProperties && selectedDetailChar.customProperties.length > 0 && (
-              <div>
+              <div style={{ marginBottom: isMaster && selectedDetailChar.secrets ? '20px' : '0' }}>
                 <h4 style={{ color: '#fff', fontSize: '1rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Sparkles size={18} color="#a855f7" /> Tratti & Proprietà Personalizzate
                 </h4>
@@ -981,6 +1153,24 @@ export const CharactersTab: React.FC = () => {
                   properties={selectedDetailChar.customProperties}
                   isMaster={isMaster}
                 />
+              </div>
+            )}
+
+            {/* Segreti Riservati al Master */}
+            {isMaster && selectedDetailChar.secrets && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '10px',
+                padding: '14px 16px',
+                marginTop: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f87171', fontSize: '0.85rem', fontWeight: 700, marginBottom: '6px' }}>
+                  <Lock size={15} /> SEGRETI DEL MASTER (NON VISIBILI AI GIOCATORI)
+                </div>
+                <div style={{ color: '#fca5a5', fontSize: '0.9rem', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                  {selectedDetailChar.secrets}
+                </div>
               </div>
             )}
           </div>

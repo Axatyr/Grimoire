@@ -76,7 +76,6 @@ model Campaign {
   items       Item[]
   locations   Location[]
   quests      Quest[]
-  npcs        NPC[]
   events      Event[]
   storyNodes  StoryNode[]
   storyEdges  StoryEdge[]
@@ -106,6 +105,10 @@ model Character {
   name             String
   race             String?
   class            String?
+  role             String?
+  faction          String?
+  attitude         String?
+  secrets          String?
   level            Int         @default(1)
   hpMax            Int         @default(10)
   hpCurrent        Int         @default(10)
@@ -114,6 +117,7 @@ model Character {
   customProperties Json?       // Array of { id, key, value, isSecret }
   inventoryNotes   String?
   avatarUrl        String?
+  locationId       String?
   isNpc            Boolean     @default(false)
   visibility       Visibility  @default(PUBLIC_PLAYERS)
   createdAt        DateTime    @default(now())
@@ -122,7 +126,9 @@ model Character {
 
   campaign         Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   user             User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  location         Location?   @relation("LocationCharacters", fields: [locationId], references: [id], onDelete: SetNull)
   items            Item[]      @relation("CharacterInventory")
+  quests           Quest[]     @relation("QuestCharacter")
 }
 
 model Monster {
@@ -185,29 +191,8 @@ model Location {
   campaign          Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   parent            Location?   @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children          Location[]  @relation("LocationHierarchy")
-  npcs              NPC[]
+  characters        Character[] @relation("LocationCharacters")
   quests            Quest[]
-}
-
-model NPC {
-  id               String      @id @default(uuid())
-  campaignId       String
-  name             String
-  role             String?     // Tavern keeper, Guildmaster, Spy
-  faction          String?
-  attitude         String?     // Friendly, Neutral, Hostile
-  secrets          String?     // Master only secret notes
-  customProperties Json?       // Array of { id, key, value, isSecret }
-  portraitUrl      String?
-  locationId       String?
-  visibility       Visibility  @default(PUBLIC_PLAYERS)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  deletedAt        DateTime?
-
-  campaign         Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  location         Location?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  quests           Quest[]
 }
 
 model Quest {
@@ -227,7 +212,7 @@ model Quest {
   deletedAt        DateTime?
 
   campaign         Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  linkedNpc        NPC?        @relation(fields: [linkedNpcId], references: [id], onDelete: SetNull)
+  linkedNpc        Character?  @relation("QuestCharacter", fields: [linkedNpcId], references: [id], onDelete: SetNull)
   linkedLocation   Location?   @relation(fields: [linkedLocationId], references: [id], onDelete: SetNull)
 }
 

@@ -10,9 +10,7 @@ import { InventoryTab } from './components/InventoryTab';
 import { MonstersTab } from './components/MonstersTab';
 import { QuestsTab } from './components/QuestsTab';
 import { LocationsTab } from './components/LocationsTab';
-import { NpcsTab } from './components/NpcsTab';
 import { NotesTab } from './components/NotesTab';
-import { GalleryTab } from './components/GalleryTab';
 import { apiFetch } from './services/api';
 import { Plus, BookOpen, X, LogIn } from 'lucide-react';
 
@@ -246,9 +244,7 @@ const MainContent: React.FC = () => {
             {activeTab === 'monsters' && <MonstersTab />}
             {activeTab === 'quests' && <QuestsTab />}
             {activeTab === 'locations' && <LocationsTab />}
-            {activeTab === 'npcs' && <NpcsTab />}
             {activeTab === 'notes' && <NotesTab />}
-            {activeTab === 'gallery' && <GalleryTab />}
           </>
         )}
       </main>

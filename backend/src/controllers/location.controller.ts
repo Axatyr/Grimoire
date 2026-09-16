@@ -36,7 +36,7 @@ export const getLocations = async (req: AuthRequest, res: Response, next: NextFu
       include: {
         parent: { select: { id: true, name: true } },
         children: { where: { deletedAt: null }, select: { id: true, name: true } },
-        npcs: { where: { deletedAt: null }, select: { id: true, name: true, role: true } },
+        characters: { where: { deletedAt: null }, select: { id: true, name: true, role: true, class: true, isNpc: true } },
       },
       orderBy: { name: 'asc' }
     });
@@ -57,7 +57,7 @@ export const getLocationById = async (req: AuthRequest, res: Response, next: Nex
       include: {
         parent: true,
         children: { where: { deletedAt: null } },
-        npcs: { where: { deletedAt: null } },
+        characters: { where: { deletedAt: null } },
         quests: { where: { deletedAt: null } },
       }
     });
