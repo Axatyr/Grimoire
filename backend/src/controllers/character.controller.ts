@@ -107,13 +107,19 @@ export const updateCharacter = async (req: AuthRequest, res: Response, next: Nex
   try {
     const id = getParam(req, 'id');
     const data = req.body;
+    const isMaster = req.user?.role === 'MASTER' || req.user?.role === 'ADMIN';
 
     const updated = await prisma.character.update({
       where: { id },
-      data
+      data,
+      include: {
+        user: { select: { id: true, username: true } },
+        location: { select: { id: true, name: true } },
+        items: { where: { deletedAt: null } },
+      }
     });
 
-    res.json({ character: updated });
+    res.json({ character: sanitizeEntity(updated, isMaster) });
   } catch (error) {
     next(error);
   }

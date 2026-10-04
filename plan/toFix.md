@@ -1,11 +1,5 @@
 
-Sprint 1:
-
-
-
 Backlog:
-- Gestire meglio l'atlante e implementare un caricamento della mappa dove pinnare i posti (interattiva)
-
 - ampliare le schede per visualizzare piu' dettagli
 - Valutare story path anche per personaggio e non solo per campagna (questo può intrecciarsi con la campagna)
 - Visualizzazione rapida dei personaggi e del bestiario (a destra?)

@@ -616,5 +616,334 @@ h1, h2, h3, .font-cinzel {
   }
 }
 
+/* =========================================================
+   D&D 5.5 Enhanced Character Sheet & Section Tabs
+   ========================================================= */
 
+/* Character Sheet Tab Navigation */
+.sheet-tabs-container {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
 
+.sheet-tab-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.sheet-tab-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.sheet-tab-button.active {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(99, 102, 241, 0.15));
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.25);
+}
+
+/* Temporary HP Badges & Dual Bar */
+.hp-temp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  color: #38bdf8;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
+}
+
+/* Unified Single HP & Blue Shield Bar */
+.hp-unified-bar-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hp-unified-bar-track {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  overflow: hidden;
+  display: flex;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hp-unified-bar-base {
+  height: 100%;
+  transition: width 0.3s ease, background 0.3s ease;
+  border-radius: 6px 0 0 6px;
+}
+
+.hp-unified-bar-shield {
+  height: 100%;
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+  transition: width 0.3s ease;
+  border-left: 1px solid rgba(255, 255, 255, 0.4);
+  position: relative;
+}
+
+/* Mini Tab Switcher for HP and Temp HP */
+.hp-mini-tabs {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 4px;
+}
+
+.hp-mini-tab-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.hp-mini-tab-btn:hover {
+  color: #fff;
+}
+
+.hp-mini-tab-btn.active-hp {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.hp-mini-tab-btn.active-temp {
+  background: rgba(6, 182, 212, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
+}
+
+.hp-action-box {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* D&D 5.5 Skills Grid */
+.sheet-skills-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sheet-skill-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.sheet-skill-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.skill-prof-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-weight: 800;
+  transition: all 0.2s ease;
+}
+
+.skill-prof-none {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+  color: transparent;
+}
+
+.skill-prof-proficient {
+  border: 1px solid #8b5cf6;
+  background: #8b5cf6;
+  color: #fff;
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.4);
+}
+
+.skill-prof-expertise {
+  border: 1px solid #f59e0b;
+  background: #f59e0b;
+  color: #000;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+/* D&D Coins & Currency */
+.dnd-coins-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+}
+
+.dnd-coin-card {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dnd-coin-card.cp { border-color: rgba(180, 83, 9, 0.3); background: rgba(180, 83, 9, 0.06); }
+.dnd-coin-card.sp { border-color: rgba(148, 163, 184, 0.3); background: rgba(148, 163, 184, 0.06); }
+.dnd-coin-card.ep { border-color: rgba(20, 184, 166, 0.3); background: rgba(20, 184, 166, 0.06); }
+.dnd-coin-card.gp { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08); }
+.dnd-coin-card.pp { border-color: rgba(168, 85, 247, 0.4); background: rgba(168, 85, 247, 0.08); }
+
+/* Saving Throw Chip */
+.dnd-save-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.78rem;
+  transition: all 0.15s ease;
+}
+
+.dnd-save-chip.proficient {
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+/* Inspiration Tokens (Max 4) */
+.inspiration-token-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.inspiration-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(245, 158, 11, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+}
+
+.inspiration-dot.active {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  border-color: #fde68a;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+  color: #000;
+}
+
+.inspiration-dot:hover {
+  transform: scale(1.15);
+  border-color: #f59e0b;
+}
+
+/* Equipped Combat Weapons */
+.equipped-weapon-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.equipped-weapon-card:hover {
+  border-color: var(--border-glow);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), 0 0 10px rgba(139, 92, 246, 0.2);
+}
+
+.weapon-attack-badge {
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #c084fc;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.weapon-damage-badge {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+/* Features & Traits */
+.trait-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.trait-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}

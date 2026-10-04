@@ -23,6 +23,13 @@ export const sanitizeEntity = <T extends Record<string, any>>(entity: T, isMaste
     delete copy.secrets;
   }
 
+  // Filter DM notes inside stats if present
+  if (copy.stats && typeof copy.stats === 'object') {
+    const statsCopy = { ...copy.stats };
+    delete statsCopy.dmNotes;
+    copy.stats = statsCopy;
+  }
+
   return copy as T;
 };
 
